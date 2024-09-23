@@ -1,0 +1,30 @@
+[package]
+name = "invar"
+version = "0.1.0"
+edition = "2021"
+authors = ["mxxntype <59417007+mxxntype@users.noreply.github.com>"]
+
+[[bin]]
+name = "invar"
+path = "src/bin/invar.rs"
+
+[lints.rust]
+unsafe_code = "forbid"
+
+[lints.clippy]
+pedantic = "warn"
+nursery = "warn"
+complexity = "warn"
+perf = "warn"
+enum_glob_use = { level = "warn", priority = 1 }
+single_match_else = { level = "allow", priority = 1 }
+option_if_let_else = { level = "allow", priority = 1 }
+or_fun_call = { level = "allow", priority = 1 }
+
+[dependencies]
+clap = { version = "4.5.17", features = ["derive", "color"] }
+reqwest = { version = "0.12.7", features = ["blocking", "json"] }
+serde = { version = "1.0.210", features = ["derive"] }
+serde_json = "1.0.128"
+serde_with = { version = "3.9.0", features = ["hex"] }
+url = { version = "2.5.2", features = ["serde"] }
