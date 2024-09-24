@@ -11,7 +11,9 @@
 ```
 
 <p align="center">
-    <i>Not sure how good this CLI art is, but whatever (c) mxxntype.</i>
+    <i>Not sure how good this art is, but whatever (c) mxxntype.</i>
+    <br>
+    <b>Invar is currently hella WIP, barely anything is implemented, but I'm working on it.</b>
 </p>
 
 <h3 align="center">
