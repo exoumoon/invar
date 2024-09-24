@@ -24,6 +24,10 @@
 - Providing an automated setup of a [Docker](https://www.docker.com) container with your modded minecraft server, powered by [`itzg/minecraft-server`](https://docker-minecraft-server.readthedocs.io/en/latest) and `docker compose`, with configurable automatic backups[^3] and maintenance;
 - Being as user-friendly and informative as possible and allowing you to organize and categorize your managed [components](TODO), so you don't get lost in them while playing around with hundreds of mods at the same time.
 
-[^1]: By "declaratively", I mean having everything built from plaintext metadata (like in [`packwiz`](https://packwiz.infra.link)) and being tightly integrated with the Git VCS. One of the design concepts of this tool is to treat modpacks and servers as software source code and managed servers, respectively.
+[^1]: By "declaratively", I mean having everything built from plaintext metadata (like in [`packwiz`](https://packwiz.infra.link)) and being tightly integrated with the Git VCS. One of the design concepts of this tool is to treat modpacks and servers as software source code and deployments, respectively.
 [^2]: There still may or may not be a need for a datapack loader mod. I'll update this when I get to implementing server-side and client-side datapack handling.
 [^3]: It's unliky I will be hand-rolling some sophisticated backup system. This will probably be an equivalent of an automated `cp -r ./server .backups/` before you start the server and after it shuts down.
+
+### Architecture
+
+<img src="assets/architecture.drawio.svg" width="100%">
