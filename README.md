@@ -30,4 +30,4 @@
 
 ### Architecture
 
-<img src="assets/architecture.drawio.svg" width="100%">
+<img src="https://raw.githubusercontent.com/exoumoon/invar/refs/heads/main/assets/architecture.drawio.svg" width="100%">
