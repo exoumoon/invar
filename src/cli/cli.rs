@@ -1,5 +1,7 @@
 use clap::builder::styling::AnsiColor::{BrightBlue, White, Yellow};
 use clap::{builder::Styles, Parser};
+use invar::instance::Loader;
+use semver::Version;
 
 /// Styling for [`clap`]'s CLI interface.
 const STYLES: Styles = Styles::styled()
@@ -12,17 +14,15 @@ const STYLES: Styles = Styles::styled()
 #[command(version, author, about, styles(STYLES))]
 pub struct Options {
     #[command(subcommand)]
-    subcommand: Subcommand,
+    pub subcommand: Subcommand,
 }
 
 #[derive(clap::Subcommand, Debug)]
 pub enum Subcommand {
-    /// Create and setup a new modpack.
-    #[clap(visible_alias("new"))]
-    Setup {
-        /// The name of the newly created modpack.
-        #[arg(short, long)]
-        name: Option<String>,
+    /// Manage the pack itself.
+    Pack {
+        #[command(subcommand)]
+        action: PackAction,
     },
 
     /// Manage modpack's components.
@@ -30,10 +30,40 @@ pub enum Subcommand {
         #[command(subcommand)]
         action: ComponentAction,
     },
+}
 
-    /// Export the modpack in one of the supported formats.
-    #[clap(visible_alias("export"))]
-    Forge,
+#[derive(clap::Subcommand, Debug)]
+pub enum PackAction {
+    /// Create a new pack in the current directory.
+    #[clap(visible_alias("new"), visible_alias("create"))]
+    Setup {
+        /// The name of the created modpack.
+        #[arg(short, long)]
+        name: Option<String>,
+
+        /// What game version to build upon.
+        #[arg(long)]
+        minecraft_version: Option<Version>,
+
+        /// Which modloader to build upon.
+        #[arg(short, long)]
+        loader: Option<Loader>,
+
+        /// Which loader version to use. Ignored if no loader is used.
+        #[arg(long)]
+        loader_version: Option<Version>,
+
+        /// Don't ask for confirmation if there's already a pack in the current directory.
+        #[arg(short, long)]
+        overwrite: bool,
+    },
+
+    /// Read the local storage and show Invar sees.
+    #[clap(visible_alias("debug"))]
+    Show,
+
+    /// Export the modpack in `.mrpack` format.
+    Export,
 }
 
 #[derive(clap::Subcommand, Debug)]

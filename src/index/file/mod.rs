@@ -1,6 +1,6 @@
-use reqwest::Url;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
+use url::Url;
 
 mod env;
 mod hashes;
@@ -9,9 +9,9 @@ pub use env::Env;
 pub use hashes::Hashes;
 pub use requirement::Requirement;
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
-pub struct Component {
+pub struct File {
     /// The **runtime** path of this file, relative to the Minecraft instance directory.
     pub(crate) path: PathBuf,
 

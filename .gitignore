@@ -14,3 +14,10 @@ assets/*.bkp
 
 # Nix
 /result
+
+pack.yml
+mods/
+resourcepacks/
+shaderpacks/
+datapacks/
+config/
