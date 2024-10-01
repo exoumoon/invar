@@ -15,6 +15,7 @@ assets/*.bkp
 # Nix
 /result
 
+unzipped/
 pack.yml
 mods/
 resourcepacks/

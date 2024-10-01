@@ -1,5 +1,7 @@
+use crate::component::Component;
 use serde::{Deserialize, Serialize};
 use std::{fs, io};
+use walkdir::{DirEntry, WalkDir};
 
 /// Possible errors that may be encountered while interacting with a persistent local storage.
 #[derive(thiserror::Error, Debug)]
@@ -45,4 +47,28 @@ pub trait PersistedEntity: Serialize + for<'de> Deserialize<'de> {
         let yaml = serde_yml::to_string(self)?;
         Ok(fs::write(Self::FILE_PATH, yaml)?)
     }
+}
+
+/// Iterate over all metadata files in local storage.
+///
+/// # Errors
+///
+/// This function will return an error if errors occur in the
+/// filesystem iterator produced by the [`walkdir`] crate.
+pub fn metadata_files<S>(subdir: S) -> Result<impl Iterator<Item = DirEntry>, walkdir::Error>
+where
+    S: AsRef<str>,
+{
+    let iterator = WalkDir::new(subdir.as_ref())
+        .into_iter()
+        .collect::<Result<Vec<_>, _>>()?
+        .into_iter()
+        .filter(|file| file.file_type().is_file())
+        .filter(|file| {
+            file.path()
+                .to_str()
+                .is_some_and(|path| path.ends_with(Component::LOCAL_STORAGE_SUFFIX))
+        });
+
+    Ok(iterator)
 }

@@ -26,8 +26,10 @@ or_fun_call = { level = "allow", priority = 1 }
 match_bool = { level = "allow", priority = 1 }
 
 [dependencies]
+chrono = { version = "0.4.38", features = ["serde"] }
 clap = { version = "4.5.17", features = ["derive", "color"] }
 color-eyre = "0.6.3"
+eyre = "0.6.12"
 inquire = "0.7.5"
 reqwest = { version = "0.12.7", features = ["blocking", "json"] }
 semver = { version = "1.0.23", features = ["serde"] }
@@ -38,6 +40,7 @@ serde_yml = "0.0.12"
 strum = { version = "0.26.3", features = ["derive"] }
 thiserror = "1.0.64"
 tracing = "0.1.40"
-tracing-subscriber = { version = "0.3.18", features = ["fmt"] }
+tracing-error = "0.2.0"
+tracing-subscriber = { version = "0.3.18", features = ["env-filter", "fmt"] }
 url = { version = "2.5.2", features = ["serde"] }
 walkdir = "2.5.0"

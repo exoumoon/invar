@@ -72,19 +72,20 @@ pub enum ComponentAction {
     List,
 
     /// Add a new component to the pack.
+    #[command(arg_required_else_help = true)]
     Add {
-        /// The ID of the component to be added.
-        id: String,
+        /// The IDs of components to be added.
+        ids: Vec<String>,
 
-        /// Where to get the component from. Inferred if left out.
-        #[arg(short, long)]
-        source: Option<ComponentSource>,
+        /// Show the component's metadata before writing it to disk.
+        #[arg(short('d'), long("debug"))]
+        show_metadata: bool,
     },
 
     /// Update one or more of the existing components.
     Update {
         /// The IDs of components to update (update all if not provided).
-        ids: Vec<String>,
+        slugs: Vec<String>,
     },
 
     /// Remove one or more of the existing components.
@@ -92,7 +93,7 @@ pub enum ComponentAction {
     #[command(arg_required_else_help = true)]
     Remove {
         /// The IDs of components to remove.
-        ids: Vec<String>,
+        slugs: Vec<String>,
     },
 }
 
