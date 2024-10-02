@@ -7,13 +7,18 @@ use color_eyre::owo_colors::OwoColorize;
 use eyre::Context;
 use inquire::validator::{StringValidator, Validation};
 use invar::component::Component;
+use invar::index;
 use invar::instance::{Instance, Loader};
 use invar::local_storage::PersistedEntity;
 use invar::{index::Index, pack::Pack};
 use semver::Version;
-use std::{fmt::Write, fs};
+use std::fs::File;
+use std::io::prelude::*;
+use std::{fmt::Write as FmtWrite, fs};
 use strum::IntoEnumIterator;
 use tracing::{info, Level};
+use zip::write::SimpleFileOptions;
+use zip::ZipWriter;
 
 const DEFAULT_PACK_VERSION: Version = Version::new(0, 1, 0);
 const VERSION_WARNING: &str = "Version verification is not implemented, so entering a non-existent version will result in an unusable modpack.";
@@ -86,7 +91,7 @@ fn main() -> Result<(), Report> {
                     }),
                 };
 
-                let mut allowed_foreign_loaders = vec![];
+                let mut allowed_foreign_loaders = vec![Loader::Minecraft];
                 if loader == Loader::Neoforge {
                     // Neoforge should be compatible with Forge mods.
                     allowed_foreign_loaders.push(Loader::Forge);
@@ -123,20 +128,36 @@ fn main() -> Result<(), Report> {
             }
 
             PackAction::Export => {
-                info!("Reading local storage...");
-                let pack = Pack::read().unwrap_or_else(|error| exit(1, error));
-                let files = vec![]; // TODO
+                let pack = Pack::read()?;
+                let files: Vec<index::file::File> = invar::component::load_components()?
+                    .into_iter()
+                    .map(Into::into)
+                    .collect();
                 let index = Index::from_pack_and_files(&pack, &files);
-                info!("Exporting into `.mrpack` format...");
-                let json = serde_json::to_string_pretty(&index).unwrap();
+                let json = serde_json::to_string_pretty(&index)?;
                 println!("{json}");
+                let path = format!("{}.mrpack", pack.name);
+                info!(message = "Writing index", target = ?path.yellow().bold());
+                let file = File::create(path)?;
+                let mut mrpack = ZipWriter::new(file);
+                let options = SimpleFileOptions::default()
+                    .compression_method(zip::CompressionMethod::Deflated);
+                mrpack.start_file("modrinth.index.json", options)?;
+                mrpack.write_all(json.as_bytes())?;
+                mrpack.finish()?;
             }
         },
 
         Subcommand::Component { action } => match action {
             ComponentAction::List => {
-                let components = invar::component::load_components().unwrap();
-                eprintln!("{components:#?}");
+                let components = invar::component::load_components()?;
+                for c in &components {
+                    println!("{type}: {slug} [{version}]", type = c.category, slug = c.slug.yellow().bold(), version = c.file_name.bold());
+                }
+                println!(
+                    "{count} components in total.",
+                    count = components.len().red().bold()
+                );
             }
 
             ComponentAction::Add { ids, show_metadata } => {
@@ -148,7 +169,7 @@ fn main() -> Result<(), Report> {
                         format!("Failed to fetch the \"{id}\" component from Modrinth"),
                     )?;
 
-                    tracing::info!(message = "Adding:", slug = ?id, file_name = ?component.file_name.yellow().bold());
+                    info!(message = "Adding:", slug = ?id, file_name = ?component.file_name.yellow().bold());
                     if show_metadata {
                         let yaml = serde_yml::to_string(&component)
                             .wrap_err("Failed to serialize the component's metadata")?
@@ -158,7 +179,7 @@ fn main() -> Result<(), Report> {
                                     writeln!(acc, "{prefix} {line}", prefix = "|>".yellow().bold());
                                 acc
                             });
-                        tracing::info!(message = "Writing metadata,", path = ?component.local_storage_path().yellow().bold());
+                        info!(message = "Writing metadata,", path = ?component.local_storage_path().yellow().bold());
                         print!("{yaml}");
                     }
 
@@ -180,7 +201,7 @@ fn main() -> Result<(), Report> {
                         });
                     match candidate {
                         Some(file) => {
-                            tracing::info!("Removing {path:?}", path = file.path());
+                            info!("Removing {path:?}", path = file.path());
                             fs::remove_file(file.path()).wrap_err("Failed to remove file")?;
                         }
                         None => {
@@ -202,14 +223,6 @@ fn non_empty_validator(error_msg: &str) -> impl StringValidator + '_ {
         true => Ok(Validation::Invalid(error_msg.into())),
         false => Ok(Validation::Valid),
     }
-}
-
-fn exit(code: i32, error: impl std::error::Error) -> ! {
-    if code != 0 {
-        tracing::error!("{error}");
-        tracing::error!("Invar encountered an unrecoverable error and cannot continue.");
-    }
-    std::process::exit(code);
 }
 
 fn install_tracing() {

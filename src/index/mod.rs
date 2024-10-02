@@ -8,13 +8,14 @@ use serde::Serialize;
 use std::collections::HashMap;
 
 #[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Index<'pack, 'files> {
-    game: &'static str,
-    format_version: u8,
-    version_id: &'pack Version,
-    name: &'pack str,
-    files: &'files [File],
-    dependencies: HashMap<Loader, Version>,
+    pub dependencies: HashMap<Loader, Version>,
+    pub files: &'files [File],
+    pub format_version: u8,
+    pub game: &'static str,
+    pub name: &'pack str,
+    pub version_id: &'pack Version,
 }
 
 impl<'pack, 'files> Index<'pack, 'files> {

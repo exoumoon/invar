@@ -1,22 +1,32 @@
 use crate::index::file::{Env, Hashes, Requirement};
 use crate::instance::{Instance, Loader};
 use crate::local_storage;
-use crate::pack::Pack;
 use serde::{Deserialize, Serialize};
-use std::fs;
-use std::path::PathBuf;
-use std::str::FromStr;
+use std::{fs, path::PathBuf, str::FromStr};
+use strum::Display;
 use tracing::debug;
 use url::Url;
 
 /// Possible types (categories) of [`Component`]s.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Display)]
 #[serde(rename_all = "lowercase")]
 pub enum Category {
     Mod,
     Resourcepack,
     Shaderpack,
     Datapack,
+}
+
+impl Category {
+    #[must_use]
+    pub fn to_runtime_path(&self) -> PathBuf {
+        PathBuf::from(match self {
+            Self::Mod => "mods",
+            Self::Resourcepack => "resourcepacks",
+            Self::Shaderpack => "shaderpacks",
+            Self::Datapack => "datapacks",
+        })
+    }
 }
 
 /// Errors that may arise when adding a new [`Component`].
@@ -66,18 +76,17 @@ impl Component {
     /// Construct a path where this component should be stored.
     #[must_use]
     pub fn local_storage_path(&self) -> PathBuf {
-        format!(
-            "{subdir}/{slug}{suffix}",
-            subdir = match self.category {
-                Category::Mod => Pack::MOD_DIR,
-                Category::Resourcepack => Pack::RESOURCEPACK_DIR,
-                Category::Shaderpack => Pack::SHADERPACK_DIR,
-                Category::Datapack => Pack::DATAPACK_DIR,
-            },
-            slug = self.slug,
-            suffix = Self::LOCAL_STORAGE_SUFFIX
-        )
-        .into()
+        let mut path = self.category.to_runtime_path();
+        path.push(format!("{}{}", self.slug, Self::LOCAL_STORAGE_SUFFIX));
+        path
+    }
+
+    /// Construct a path where this component should be at runtime.
+    #[must_use]
+    pub fn runtime_path(&self) -> PathBuf {
+        let mut path = self.category.to_runtime_path();
+        path.push(&self.file_name);
+        path
     }
 
     /// Fetch a [`Component`] from the **Modrinth API**.
@@ -146,7 +155,7 @@ impl Component {
                 slug: slug.to_owned(),
                 category: metadata.category,
                 version_id: latest_compatible_version.id.clone(),
-                file_name: main_file.filename.clone(),
+                file_name: main_file.filename.to_lowercase().replace(' ', "_"),
                 file_size: main_file.size,
                 download_url: main_file.url.clone(),
                 hashes: main_file.hashes.clone(),

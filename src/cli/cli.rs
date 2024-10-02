@@ -59,7 +59,6 @@ pub enum PackAction {
     },
 
     /// Read the local storage and show Invar sees.
-    #[clap(visible_alias("debug"))]
     Show,
 
     /// Export the modpack in `.mrpack` format.

@@ -22,3 +22,4 @@ resourcepacks/
 shaderpacks/
 datapacks/
 config/
+*.mrpack
