@@ -15,6 +15,7 @@ use url::Url;
 pub enum Category {
     Mod,
     Resourcepack,
+    #[serde(alias = "shader")]
     Shaderpack,
     Datapack,
 }
@@ -134,9 +135,9 @@ impl Component {
         }
 
         impl fmt::Display for Version {
-            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            fn fmt(&self, stream: &mut fmt::Formatter<'_>) -> fmt::Result {
                 write!(
-                    f,
+                    stream,
                     "{name} [ID: {id}] - Supported loaders: {loaders:?}, released: {date}",
                     name = self.name.yellow().bold(),
                     id = self.id.bold(),
@@ -154,15 +155,24 @@ impl Component {
 
         // Only leave versions that are both loader- and version-compatible with the instance.
         versions.retain(|v| {
+            // Resource- and shaderpacks may be loaded even if they are made for a different version.
+            let version_insensitive =
+                [Category::Resourcepack, Category::Shaderpack].contains(&metadata.category);
             let version_compatible = v.game_versions.iter().any(|v| {
                 semver::Version::from_str(v).is_ok_and(|v| v == instance.minecraft_version)
             });
-            let loader_compatible = v
-                .loaders
-                .iter()
-                .any(|l| *l == instance.loader || instance.allowed_foreign_loaders.contains(l));
+            let version_compatible = version_insensitive || version_compatible;
+            let loader_compatible = v.loaders.iter().any(|l| {
+                *l == instance.loader
+                    || instance.allowed_foreign_loaders.contains(l)
+                    || *l == Loader::Other
+            });
             loader_compatible && version_compatible
         });
+
+        for version in &mut versions {
+            version.loaders.dedup();
+        }
         versions.sort_unstable_by_key(|version| version.date_published);
         versions.reverse();
 

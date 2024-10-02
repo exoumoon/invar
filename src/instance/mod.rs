@@ -1,8 +1,7 @@
-use std::collections::HashMap;
-
 use clap::ValueEnum;
 use semver::Version;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use strum::{Display, EnumIter};
 
 /// A struct representing a Minecraft instance.
@@ -27,7 +26,7 @@ impl Instance {
     #[must_use = "Unused instance dependencies"]
     pub fn index_dependencies(&self) -> HashMap<Loader, Version> {
         let mut dependencies = HashMap::new();
-        dependencies.insert(self.loader, self.loader_version.clone());
+        dependencies.insert(self.loader.clone(), self.loader_version.clone());
         dependencies.insert(Loader::Minecraft, self.minecraft_version.clone());
         dependencies
     }
@@ -37,7 +36,7 @@ impl Instance {
 ///
 /// Implements [`serde`]'s (De)serialization and [`clap`]'s [`ValueEnum`].
 #[derive(
-    Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ValueEnum, EnumIter, Display, Hash,
+    Debug, Clone, PartialEq, Eq, Serialize, Deserialize, ValueEnum, EnumIter, Display, Hash,
 )]
 #[serde(rename_all = "lowercase")]
 pub enum Loader {
@@ -66,4 +65,11 @@ pub enum Loader {
     ///
     /// An open-source, community-driven modding toolchain. I believe its [`Fabric`](Loader::Fabric)-compatible in terms of mods.
     Quilt,
+
+    /// Some other modloader we don't know about.
+    ///
+    /// Shaders sometimes say their loader is `"iris"` or `"optifine"`, mods may just say `"modloader"`.
+    /// In these cases, it's up to the user to check that the component is compatible with the instance.
+    #[serde(other)]
+    Other,
 }
