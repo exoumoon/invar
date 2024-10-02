@@ -44,7 +44,7 @@ pub enum Loader {
     /// Vanilla minecraft with no external modloader.
     ///
     /// You won't be able to load mods (and thus shaders) if this is the [`Instance::loader`].
-    #[serde(alias = "vanilla", alias = "none")]
+    #[serde(alias = "vanilla", alias = "none", alias = "datapack")]
     Minecraft,
 
     /// The [**Forge**](https://minecraftforge.net) modloader.

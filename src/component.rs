@@ -1,7 +1,9 @@
 use crate::index::file::{Env, Hashes, Requirement};
 use crate::instance::{Instance, Loader};
 use crate::local_storage;
+use color_eyre::owo_colors::OwoColorize;
 use serde::{Deserialize, Serialize};
+use std::fmt;
 use std::{fs, path::PathBuf, str::FromStr};
 use strum::Display;
 use tracing::debug;
@@ -38,6 +40,8 @@ pub enum AddError {
     Incompatible,
     #[error("The latest compatible version of this component has no files associated")]
     NoFile,
+    #[error("Failed to get required input from user")]
+    User(#[from] inquire::error::InquireError),
 }
 
 /// A (runtime) modpack component.
@@ -122,10 +126,25 @@ impl Component {
         #[derive(Deserialize, Debug)]
         struct Version {
             id: String,
+            name: String,
             game_versions: Vec<String>,
             loaders: Vec<Loader>,
             date_published: chrono::DateTime<chrono::Utc>,
             files: Vec<File>,
+        }
+
+        impl fmt::Display for Version {
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                write!(
+                    f,
+                    "{name} [ID: {id}] - Supported loaders: {loaders:?}, released: {date}",
+                    name = self.name.yellow().bold(),
+                    id = self.id.bold(),
+                    loaders = self.loaders.bright_red(),
+                    date = self.date_published.format("%b %e, %Y").bright_blue().bold()
+                )?;
+                Ok(())
+            }
         }
 
         let metadata_url = format!("https://api.modrinth.com/v2/project/{slug}");
@@ -145,28 +164,40 @@ impl Component {
             loader_compatible && version_compatible
         });
         versions.sort_unstable_by_key(|version| version.date_published);
+        versions.reverse();
 
-        if let Some(latest_compatible_version) = versions.last() {
-            let main_file = latest_compatible_version
-                .files
-                .first()
-                .ok_or(AddError::NoFile)?;
-            Ok(Self {
-                slug: slug.to_owned(),
-                category: metadata.category,
-                version_id: latest_compatible_version.id.clone(),
-                file_name: main_file.filename.to_lowercase().replace(' ', "_"),
-                file_size: main_file.size,
-                download_url: main_file.url.clone(),
-                hashes: main_file.hashes.clone(),
-                environment: Env {
-                    client: metadata.client_side,
-                    server: metadata.server_side,
-                },
-            })
-        } else {
-            Err(AddError::Incompatible)
-        }
+        let version = match versions.len() {
+            0 => return Err(AddError::Incompatible),
+            1 => versions.first().unwrap_or_else(|| unreachable!()),
+            count => {
+                let message = format!(
+                    "{count} compatible versions of {} found, choose one:",
+                    slug.magenta().bold()
+                );
+                let help = format!(
+                    "NOTE: this component will be added as a '{}', so pick a version with the right loaders",
+                    metadata.category
+                );
+                &inquire::Select::new(&message, versions)
+                    .with_help_message(&help)
+                    .prompt()?
+            }
+        };
+
+        let file = version.files.first().ok_or(AddError::NoFile)?;
+        Ok(Self {
+            slug: slug.to_owned(),
+            category: metadata.category,
+            environment: Env {
+                client: metadata.client_side,
+                server: metadata.server_side,
+            },
+            version_id: version.id.clone(),
+            file_name: file.filename.clone(),
+            file_size: file.size,
+            download_url: file.url.clone(),
+            hashes: file.hashes.clone(),
+        })
     }
 }
 
