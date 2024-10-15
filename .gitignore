@@ -16,6 +16,7 @@ assets/*.bkp
 /result
 
 unzipped/
+sample_pack/
 pack.yml
 mods/
 resourcepacks/
