@@ -152,7 +152,18 @@ fn main() -> Result<(), Report> {
             ComponentAction::List => {
                 let components = invar::component::load_components()?;
                 for c in &components {
-                    println!("{type}: {slug} [{version}]", type = c.category, slug = c.slug.yellow().bold(), version = c.file_name.bold());
+                    println!(
+                        "{type}: {tag}{slug} [{version}]",
+                        type = c.category,
+                        slug = c.slug.yellow().bold(),
+                        version = c.file_name.bold(),
+                        tag = match &c.tags.main {
+                            Some(tag) => format!("{tag}/"),
+                            None => String::new(),
+                        }
+                        .bright_yellow()
+                        .bold(),
+                    );
                 }
                 println!(
                     "{count} components in total.",

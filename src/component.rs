@@ -72,8 +72,9 @@ pub enum Tag {
     Wildlife,
 }
 
+/// Helper struct to group together [`Component`] tagging information.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
-pub(crate) struct TagInformation {
+pub struct TagInformation {
     pub main: Option<Tag>,
     pub others: Vec<Tag>,
 }
@@ -87,7 +88,7 @@ pub(crate) struct TagInformation {
 pub struct Component {
     pub slug: String,
     pub category: Category,
-    pub(crate) tags: TagInformation,
+    pub tags: TagInformation,
     pub environment: Env,
     pub version_id: String,
     pub file_name: String,
