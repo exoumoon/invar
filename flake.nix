@@ -1,11 +1,11 @@
 {
-    description = "";
+    description = "CLI management tool for modded Minecraft servers";
 
     inputs = {
         nixpkgs.url = "github:nixos/nixpkgs/nixos-24.05";
         naersk.url = "github:nix-community/naersk";
         snowfall-lib = {
-            url = "github:snowfallorg/lib";
+            url = "github:mxxntype/snowfall";
             inputs.nixpkgs.follows = "nixpkgs";
         };
 
@@ -19,7 +19,6 @@
     outputs = inputs: inputs.snowfall-lib.mkFlake {
         inherit inputs;
         src = ./.;
-
         overlays = with inputs; [ (import nixpkgs-mozilla) ];
     };
 }
