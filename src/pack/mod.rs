@@ -29,8 +29,8 @@ impl Pack {
     /// Local path to the directory that stores the resourcepacks.
     pub const RESOURCEPACK_DIR: &'static str = "resourcepacks";
 
-    /// Local path to the directory that stores the shaderpacks.
-    pub const SHADERPACK_DIR: &'static str = "shaderpacks";
+    /// Local path to the directory that stores the shaders.
+    pub const SHADERPACK_DIR: &'static str = "shaders";
 
     /// Local path to the directory that stores the datapacks.
     pub const DATAPACK_DIR: &'static str = "datapacks";

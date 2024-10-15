@@ -21,6 +21,7 @@ pack.yml
 mods/
 resourcepacks/
 shaderpacks/
+shaders/
 datapacks/
 config/
 *.mrpack
