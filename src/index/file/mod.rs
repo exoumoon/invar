@@ -13,11 +13,14 @@ pub use requirement::Requirement;
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct File {
-    /// The **runtime** path of this file, relative to the Minecraft instance directory.
+    /// The **runtime** path of this file, relative to the Minecraft instance
+    /// directory.
     pub(crate) path: PathBuf,
-    /// The hashes of the file specified. This **must** contain the SHA1 hash and the SHA512 hash.
+    /// The hashes of the file specified. This **must** contain the SHA1 hash
+    /// and the SHA512 hash.
     pub(crate) hashes: Hashes,
-    /// For files that only exist on a specific environment, this field allows that to be specified.
+    /// For files that only exist on a specific environment, this field allows
+    /// that to be specified.
     pub(crate) env: Env,
     /// An array containing HTTPS URLs where this file may be downloaded.
     pub(crate) downloads: Vec<Url>,

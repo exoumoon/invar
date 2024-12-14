@@ -1,2 +1,11 @@
 [toolchain]
-channel = "1.81.0"
+channel = "nightly-2024-12-14"
+components = [
+    "cargo",
+    "clippy",
+    "rust-analyzer",
+    "rust-docs",
+    "rust-std",
+    "rustc",
+    "rustc-codegen-cranelift-preview",
+]

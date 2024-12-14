@@ -3,7 +3,9 @@ use crate::instance::{Instance, Loader};
 use crate::local_storage;
 use color_eyre::owo_colors::OwoColorize;
 use serde::{Deserialize, Serialize};
-use std::{fs, path::PathBuf, str::FromStr};
+use std::fs;
+use std::path::PathBuf;
+use std::str::FromStr;
 use strum::{Display, EnumIter, IntoEnumIterator};
 use tracing::debug;
 use url::Url;
@@ -25,7 +27,8 @@ impl From<Category> for PathBuf {
             Category::Mod => "mods",
             Category::Resourcepack => "resourcepacks",
             Category::Datapack => "datapacks",
-            // WARN: We do keep it in `shaders/` in local storage, but Minecraft expects it in `shaderpacks/`.
+            // WARN: We do keep it in `shaders/` in local storage, but Minecraft expects it in
+            // `shaderpacks/`.
             Category::Shader => "shaderpacks",
         })
     }
@@ -39,7 +42,8 @@ impl From<Category> for PathBuf {
 pub enum Tag {
     /// Stuff that adds weapons and/or combat mechanics, like **Better Combat**.
     Combat,
-    /// Stuff that adds compatiblity between other components and/or [`Loader`]s.
+    /// Stuff that adds compatiblity between other components and/or
+    /// [`Loader`]s.
     Compatibility,
     /// An uncategorized tag added by the user.
     #[strum(to_string = "{0}")]
@@ -62,11 +66,14 @@ pub enum Tag {
     Progression,
     /// Quality-of-Life components, like **Quark**.
     Qol,
-    /// Stuff that expands the game's storage systems, like **Expanded Storage**.
+    /// Stuff that expands the game's storage systems, like **Expanded
+    /// Storage**.
     Storage,
-    /// Stuff that introduces technology to the game, like **Create** or **AE2**.
+    /// Stuff that introduces technology to the game, like **Create** or
+    /// **AE2**.
     Technology,
-    /// Stuff that improves the game's visuals, like **Euphoria Patches** or **Wakes**.
+    /// Stuff that improves the game's visuals, like **Euphoria Patches** or
+    /// **Wakes**.
     Visual,
     /// Stuff that adds new wildlife to the game, like **Alex's Mobs**.
     Wildlife,
@@ -81,9 +88,10 @@ pub struct TagInformation {
 
 /// A (runtime) modpack component.
 ///
-/// A component is one of the elements that go into the `files` array of the `.mrpack` index.
-/// These usually represent mods, resourcepacks, shaderpacks, datapacks, but can be anything,
-/// if needed. New components are obtained from the **Modrinth API**.
+/// A component is one of the elements that go into the `files` array of the
+/// `.mrpack` index. These usually represent mods, resourcepacks, shaderpacks,
+/// datapacks, but can be anything, if needed. New components are obtained from
+/// the **Modrinth API**.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Component {
     pub slug: String,
@@ -109,8 +117,9 @@ impl Component {
     ///
     /// # Panics
     ///
-    /// This function will panic if the [parent](std::path::Path::parent) of this [`Component`]'s
-    /// [local storage path](Self::local_storage_path) ends up being [`None`], which shouldn't happen.
+    /// This function will panic if the [parent](std::path::Path::parent) of
+    /// this [`Component`]'s [local storage path](Self::local_storage_path)
+    /// ends up being [`None`], which shouldn't happen.
     pub fn save_to_metadata_dir(&self) -> Result<(), local_storage::Error> {
         let yaml = serde_yml::to_string(self)?;
         let path = self.local_storage_path();
@@ -143,15 +152,18 @@ impl Component {
     ///
     /// The process is:
     /// 1. Get the component's available versions from [`/project/{id|slug}/version`](https://docs.modrinth.com/#tag/versions/operation/getProjectVersions).
-    /// 2. Filter the versions based on the `loaders` and `game_versions` fields.
+    /// 2. Filter the versions based on the `loaders` and `game_versions`
+    ///    fields.
     /// 3. Pick the latest from the compatible ones.
     ///
     /// # Errors
     ///
     /// This function will return an error if:
     /// - It fails to query the Modrinth API;
-    /// - None of the versions of the component are compatible with the provided [`Instance`];
-    /// - There are no URLs to where the component's file can be downloaded (unlikely...)
+    /// - None of the versions of the component are compatible with the provided
+    ///   [`Instance`];
+    /// - There are no URLs to where the component's file can be downloaded
+    ///   (unlikely...)
     #[tracing::instrument]
     pub fn fetch_from_modrinth(slug: &str, instance: &Instance) -> Result<Self, AddError> {
         let metadata_url = format!("https://api.modrinth.com/v2/project/{slug}");
@@ -159,9 +171,11 @@ impl Component {
         let metadata: modrinth::Metadata = reqwest::blocking::get(metadata_url)?.json()?;
         let mut versions: Vec<modrinth::Version> = reqwest::blocking::get(versions_url)?.json()?;
 
-        // Only leave versions that are both loader- and version-compatible with the instance.
+        // Only leave versions that are both loader- and version-compatible with the
+        // instance.
         versions.retain(|v| {
-            // Resourcepacks and shaders may be loaded even if they are made for a different version.
+            // Resourcepacks and shaders may be loaded even if they are made for a different
+            // version.
             let version_insensitive =
                 [Category::Resourcepack, Category::Shader].contains(&metadata.category);
             let version_compatible = v.game_versions.iter().any(|v| {
@@ -202,7 +216,7 @@ impl Component {
 
         let file = version.files.first().ok_or(AddError::NoFile)?;
         let main_tag = self::pick_main_tag()?;
-        let other_tags = self::pick_secondary_tags(&main_tag)?;
+        let other_tags = self::pick_secondary_tags(main_tag.as_ref())?;
         let component = Self {
             slug: slug.to_owned(),
             category: metadata.category,
@@ -249,11 +263,11 @@ fn pick_main_tag() -> Result<Option<Tag>, AddError> {
     Ok(main_tag)
 }
 
-fn pick_secondary_tags(main_tag: &Option<Tag>) -> Result<Vec<Tag>, AddError> {
+fn pick_secondary_tags(main_tag: Option<&Tag>) -> Result<Vec<Tag>, AddError> {
     let other_tags: Vec<Tag> = {
         let message = "Add some additional tags for this component?";
         let options = Tag::iter()
-            .filter(|tag| !matches!(tag, Tag::Custom(_)) && main_tag.as_ref() != Some(tag))
+            .filter(|tag| !matches!(tag, Tag::Custom(_)) && main_tag != Some(tag))
             .collect();
         inquire::MultiSelect::new(message, options)
             .with_page_size(Tag::iter().count())
@@ -279,7 +293,8 @@ pub enum AddError {
 
 /// Load all [`Component`]s found in the metadata directories.
 ///
-/// Only files with names ending in [`Component::LOCAL_STORAGE_SUFFIX`] will be loaded.
+/// Only files with names ending in [`Component::LOCAL_STORAGE_SUFFIX`] will be
+/// loaded.
 ///
 /// # Errors
 ///

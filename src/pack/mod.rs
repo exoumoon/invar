@@ -1,4 +1,5 @@
-use crate::{instance::Instance, local_storage::PersistedEntity};
+use crate::instance::Instance;
+use crate::local_storage::PersistedEntity;
 use semver::Version;
 use serde::{Deserialize, Serialize};
 use std::fs::{self, File};
@@ -6,8 +7,9 @@ use std::io;
 
 /// The "modpack" entity.
 ///
-/// A [`Pack`] represents a Minecraft [`Instance`] (with a [`Loader`](crate::instance::Loader)),
-/// and all the mods that are in it, together with shaders, resourcepacks, configuration, etc.
+/// A [`Pack`] represents a Minecraft [`Instance`] (with a
+/// [`Loader`](crate::instance::Loader)), and all the mods that are in it,
+/// together with shaders, resourcepacks, configuration, etc.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Pack {
     pub name: String,

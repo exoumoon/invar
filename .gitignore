@@ -13,7 +13,8 @@ assets/*.bkp
 *.pdb
 
 # Nix
-/result
+result
+.direnv/
 
 unzipped/
 sample_pack/

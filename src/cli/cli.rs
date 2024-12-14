@@ -1,5 +1,6 @@
 use clap::builder::styling::AnsiColor::{BrightBlue, White, Yellow};
-use clap::{builder::Styles, Parser};
+use clap::builder::Styles;
+use clap::Parser;
 use invar::instance::Loader;
 use semver::Version;
 
@@ -53,7 +54,8 @@ pub enum PackAction {
         #[arg(long)]
         loader_version: Option<Version>,
 
-        /// Don't ask for confirmation if there's already a pack in the current directory.
+        /// Don't ask for confirmation if there's already a pack in the current
+        /// directory.
         #[arg(short, long)]
         overwrite: bool,
     },

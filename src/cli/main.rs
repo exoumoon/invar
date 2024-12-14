@@ -1,5 +1,3 @@
-mod cli;
-
 use crate::cli::{ComponentAction, Options, PackAction, Subcommand};
 use clap::Parser;
 use color_eyre::eyre::Report;
@@ -8,17 +6,21 @@ use eyre::Context;
 use inquire::validator::{StringValidator, Validation};
 use invar::component::Component;
 use invar::index;
+use invar::index::Index;
 use invar::instance::{Instance, Loader};
 use invar::local_storage::PersistedEntity;
-use invar::{index::Index, pack::Pack};
+use invar::pack::Pack;
 use semver::Version;
+use std::fmt::Write as FmtWrite;
+use std::fs;
 use std::fs::File;
 use std::io::prelude::*;
-use std::{fmt::Write as FmtWrite, fs};
 use strum::IntoEnumIterator;
 use tracing::{info, Level};
 use zip::write::SimpleFileOptions;
 use zip::ZipWriter;
+
+mod cli;
 
 const DEFAULT_PACK_VERSION: Version = Version::new(0, 1, 0);
 const VERSION_WARNING: &str = "Version verification is not implemented, so entering a non-existent version will result in an unusable modpack.";

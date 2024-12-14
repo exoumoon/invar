@@ -1,7 +1,8 @@
 /// An entity representing a single project in the `files` array.
 pub mod file;
 
-use crate::{instance::Loader, pack::Pack};
+use crate::instance::Loader;
+use crate::pack::Pack;
 use file::File;
 use semver::Version;
 use serde::Serialize;
@@ -18,7 +19,7 @@ pub struct Index<'pack, 'files> {
     pub version_id: &'pack Version,
 }
 
-impl<'pack, 'files> Index<'pack, 'files> {
+impl Index<'_, '_> {
     const GAME_LITERAL: &'static str = "minecraft";
     const FORMAT_VERSION: u8 = 1;
 }
@@ -39,7 +40,8 @@ impl<'pack, 'files> Index<'pack, 'files> {
 
 #[cfg(test)]
 mod tests {
-    use super::{file::File, Index};
+    use super::file::File;
+    use super::Index;
     use crate::instance::{Instance, Loader};
     use crate::pack::Pack;
     use semver::Version;
