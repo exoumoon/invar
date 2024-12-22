@@ -1,7 +1,7 @@
 use clap::ValueEnum;
 use semver::Version;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use strum::{Display, EnumIter};
 
 /// A struct representing a Minecraft instance.
@@ -22,14 +22,14 @@ pub struct Instance {
     /// on Forge/NeoForge, this option makes it so you can add mods that would
     /// require a compatibility layer without getting bombarded with
     /// incompatibility warnings.
-    pub allowed_foreign_loaders: Vec<Loader>,
+    pub allowed_foreign_loaders: HashSet<Loader>,
 }
 
 impl Instance {
     #[must_use = "Unused instance dependencies"]
     pub fn index_dependencies(&self) -> HashMap<Loader, Version> {
         let mut dependencies = HashMap::new();
-        dependencies.insert(self.loader.clone(), self.loader_version.clone());
+        dependencies.insert(self.loader, self.loader_version.clone());
         dependencies.insert(Loader::Minecraft, self.minecraft_version.clone());
         dependencies
     }
@@ -39,7 +39,7 @@ impl Instance {
 ///
 /// Implements [`serde`]'s (De)serialization and [`clap`]'s [`ValueEnum`].
 #[derive(
-    Debug, Clone, PartialEq, Eq, Serialize, Deserialize, ValueEnum, EnumIter, Display, Hash,
+    Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ValueEnum, EnumIter, Display, Hash,
 )]
 #[serde(rename_all = "lowercase")]
 pub enum Loader {
@@ -63,8 +63,8 @@ pub enum Loader {
 
     /// The [**Fabric**](https://fabricmc.net) modloader.
     ///
-    /// Fabric is a modular, lightweight mod loader for Minecraft. Performant
-    /// and fresh, but incompatible with [`Forge`](Loader::Forge) mods.
+    /// Modular, lightweight mod loader. Performant and fresh, but incompatible
+    /// with [`Forge`](Loader::Forge) mods.
     Fabric,
 
     /// The [**Quilt**](https://quiltmc.org/en) modloader.

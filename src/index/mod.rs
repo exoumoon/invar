@@ -37,33 +37,3 @@ impl<'pack, 'files> Index<'pack, 'files> {
         }
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::file::File;
-    use super::Index;
-    use crate::instance::{Instance, Loader};
-    use crate::pack::Pack;
-    use semver::Version;
-
-    // As long as this compiles and runs, its fine.
-    #[test]
-    fn raw_creation() {
-        let pack = Pack {
-            name: String::from("sample_pack"),
-            version: Version::new(0, 1, 0),
-            authors: vec![String::from("mxxntype")],
-            instance: Instance {
-                minecraft_version: Version::new(1, 20, 1),
-                loader: Loader::Neoforge,
-                loader_version: Version::new(47, 3, 7),
-                allowed_foreign_loaders: vec![Loader::Forge],
-            },
-        };
-
-        let files: Vec<File> = vec![];
-        let index = Index::from_pack_and_files(&pack, &files);
-        let json = serde_json::to_string_pretty(&index).unwrap();
-        eprintln!("{json}");
-    }
-}

@@ -42,7 +42,7 @@ impl From<Category> for PathBuf {
 pub enum Tag {
     /// Stuff that adds weapons and/or combat mechanics, like **Better Combat**.
     Combat,
-    /// Stuff that adds compatiblity between other components and/or
+    /// Stuff that adds compatibility between other components and/or
     /// [`Loader`]s.
     Compatibility,
     /// An uncategorized tag added by the user.

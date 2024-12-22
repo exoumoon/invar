@@ -31,6 +31,12 @@ pub enum Subcommand {
         #[command(subcommand)]
         action: ComponentAction,
     },
+
+    /// Manage the self-hosted server.
+    Server {
+        #[command(subcommand)]
+        action: ServerAction,
+    },
 }
 
 #[derive(clap::Subcommand, Debug)]
@@ -98,8 +104,36 @@ pub enum ComponentAction {
     },
 }
 
-#[derive(clap::ValueEnum, Debug, Clone, PartialEq, Eq)]
-pub enum ComponentSource {
-    Modrinth,
-    Curseforge,
+#[derive(clap::Subcommand, Debug)]
+pub enum ServerAction {
+    /// Prepare for the first start of the server.
+    Setup {
+        /// Overwrite the existing server setup if needed.
+        #[arg(long, default_value_t = false)]
+        force: bool,
+    },
+
+    /// Start the server, do nothing if it is already running.
+    Start,
+
+    /// Stop the server, do nothing if it is already stopped.
+    Stop,
+
+    /// Report the status of the server.
+    Status,
+
+    /// Manage backups of the server.
+    Backup {
+        #[command(subcommand)]
+        action: BackupAction,
+    },
+}
+
+#[derive(clap::Subcommand, Debug)]
+pub enum BackupAction {
+    /// List out all the backups created in the past.
+    List,
+
+    /// Create a new backup at this point in time.
+    Create,
 }
