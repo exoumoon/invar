@@ -3,7 +3,6 @@ use clap::Parser;
 use cli::ServerAction;
 use color_eyre::eyre::Report;
 use color_eyre::owo_colors::OwoColorize;
-use docker_compose_types::{AdvancedVolumes, Compose, Service, Services, Volumes};
 use eyre::Context;
 use inquire::validator::{StringValidator, Validation};
 use invar::component::Component;
@@ -11,10 +10,10 @@ use invar::index::Index;
 use invar::instance::{Instance, Loader};
 use invar::local_storage::PersistedEntity;
 use invar::pack::Pack;
-use invar::server::{DockerCompose, DEFAULT_MINECRAFT_PORT};
+use invar::server::{DockerCompose, Server};
 use invar::{index, local_storage};
 use semver::Version;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 use std::fmt::Write as FmtWrite;
 use std::fs::File;
 use std::io::prelude::*;
@@ -61,7 +60,7 @@ fn main() -> Result<(), Report> {
         },
 
         Subcommand::Server { action, .. } => match action {
-            ServerAction::Setup { force } => setup_server(force),
+            ServerAction::Setup => setup_server(),
             _ => todo!(),
         },
     };
@@ -75,12 +74,17 @@ fn main() -> Result<(), Report> {
                         error!("Looks like Invar encountered an I/O error. Most likely there isn't a modpack in this directory, or for some reason Invar cannot access files inside of it.");
                     }
 
-                    local_storage::Error::Serde { .. } => {
+                    local_storage::Error::SerdeYml { .. }
+                    | local_storage::Error::SerdeJson { .. } => {
                         error!("Looks like Invar had an error while (de)serializing data with Serde. This really isn't supposed to happen, something has to be real broken");
                     }
 
                     local_storage::Error::Walkdir { .. } => {
                         error!("Looks like Invar had an error while scanning modpack's files. Most likely there isn't a modpack in this directory, or for some reason Invar cannot access files inside of it.");
+                    }
+
+                    local_storage::Error::Zip { .. } => {
+                        error!("Looks like Invar had an error while dealing with Zip archives. This really isn't supposed to happen, something has to be real broken");
                     }
                 }
             }
@@ -93,89 +97,12 @@ fn main() -> Result<(), Report> {
 }
 
 #[instrument(level = "debug", ret)]
-fn setup_server(force: bool) -> Result<(), Report> {
-    let pack = Pack::read()?;
-
-    let data_volume_path = "./server";
-    if let Err(error) = fs::create_dir_all(data_volume_path) {
-        match error.kind() {
-            io::ErrorKind::AlreadyExists => {}
-            _ => return Err(error).wrap_err("Failed to create a directory for the data volume"),
-        }
-    }
-
-    let volumes = vec![
-        // Minecraft's data (all kinds of state).
-        Volumes::Advanced(AdvancedVolumes {
-            source: Some(data_volume_path.into()),
-            target: "/data".into(),
-            _type: "bind".into(),
-            read_only: false,
-            bind: None,
-            volume: None,
-            tmpfs: None,
-        }),
-        // A "symlink" to our expored modpack.
-        Volumes::Advanced(AdvancedVolumes {
-            source: Some({
-                export_pack()?;
-                format!("./{}.mrpack", pack.name)
-            }),
-            target: DockerCompose::MODPACK_PATH.into(),
-            _type: "bind".into(),
-            read_only: true,
-            bind: None,
-            volume: None,
-            tmpfs: None,
-        }),
-    ];
-
-    let ports = docker_compose_types::Ports::Short(vec![format!(
-        "{DEFAULT_MINECRAFT_PORT}:{DEFAULT_MINECRAFT_PORT}"
-    )]);
-
-    let mut services = HashMap::new();
-    let environment = DockerCompose::build_environment(&pack.instance);
-    let hostname = format!("{}_server", pack.name);
-    let image = "itzg/minecraft-server:java17-alpine".to_string();
-    services.insert(
-        "server".to_string(),
-        Some(Service {
-            image: Some(image),
-            hostname: Some(hostname.clone()),
-            container_name: Some(hostname),
-            environment,
-            restart: Some("unless-stopped".into()),
-            volumes,
-            networks: docker_compose_types::Networks::Simple(vec![]),
-            ports,
-            ..Default::default()
-        }),
+fn setup_server() -> Result<(), Report> {
+    let _ = DockerCompose::setup()?;
+    tracing::info!(
+        "{:?} created. Consider taking a look inside to see more details",
+        <DockerCompose as PersistedEntity>::FILE_PATH
     );
-
-    let manifest = Compose {
-        version: None,
-        services: Services(services),
-        volumes: docker_compose_types::TopLevelVolumes::default(),
-        networks: docker_compose_types::ComposeNetworks::default(),
-        service: None,
-        secrets: None,
-        extensions: HashMap::default(),
-    };
-
-    let manifest_path = <DockerCompose as PersistedEntity>::FILE_PATH;
-    let manifest_exists = std::fs::exists(manifest_path)
-        .wrap_err("Failed to check for an existing docker compose manifest")?;
-    if manifest_exists && !force {
-        let error = eyre::eyre!("A docker compose server manifest is already present");
-        return Err(error.wrap_err("Pass `--force` if you wish to overwrite"));
-    }
-
-    let docker_compose = DockerCompose(manifest);
-    docker_compose
-        .write()
-        .wrap_err("Failed ot save the server manifest to local storage")?;
-
     Ok(())
 }
 

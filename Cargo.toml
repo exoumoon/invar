@@ -31,6 +31,7 @@ or_fun_call = { level = "allow", priority = 1 }
 match_bool = { level = "allow", priority = 1 }
 
 [dependencies]
+bon = "3.3.0"
 chrono = { version = "0.4.38", features = ["serde"] }
 clap = { version = "4.5.17", features = ["derive", "color"] }
 color-eyre = "0.6.3"

@@ -5,6 +5,8 @@ use std::{fs, io};
 use tracing::{error, instrument};
 use walkdir::{DirEntry, WalkDir};
 
+pub type Result<T> = std::result::Result<T, self::Error>;
+
 /// Possible errors that may arise while interacting with local storage.
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
@@ -15,9 +17,21 @@ pub enum Error {
     },
 
     #[error(transparent)]
-    Serde {
+    SerdeYml {
         #[from]
         source: serde_yml::Error,
+    },
+
+    #[error(transparent)]
+    SerdeJson {
+        #[from]
+        source: serde_json::Error,
+    },
+
+    #[error(transparent)]
+    Zip {
+        #[from]
+        source: zip::result::ZipError,
     },
 
     #[error(transparent)]
@@ -40,7 +54,7 @@ pub trait PersistedEntity: Serialize + for<'de> Deserialize<'de> {
     /// [`Self::FILE_PATH`] or an error occurs when deserializing its
     /// contents into [`Self`].
     #[instrument]
-    fn read() -> Result<Self, Error> {
+    fn read() -> Result<Self> {
         let path = find_and_expand(Path::new(Self::FILE_PATH))?;
         let yaml =
             fs::read_to_string(&path).inspect_err(|_| error!(?path, "failed to read file"))?;
@@ -57,7 +71,7 @@ pub trait PersistedEntity: Serialize + for<'de> Deserialize<'de> {
     /// [`Self::FILE_PATH`].
     #[must_use = "You haven't checked if the entity was successfully persisted"]
     #[instrument(skip(self))]
-    fn write(&self) -> Result<(), Error> {
+    fn write(&self) -> Result<()> {
         let path = PathBuf::from(Self::FILE_PATH);
         let yaml = serde_yml::to_string(self)?;
         fs::write(&path, yaml).inspect_err(|_| error!(target = ?path, "failed to write file"))?;
@@ -65,7 +79,7 @@ pub trait PersistedEntity: Serialize + for<'de> Deserialize<'de> {
     }
 }
 
-fn find_and_expand(path: &Path) -> Result<PathBuf, Error> {
+fn find_and_expand(path: &Path) -> Result<PathBuf> {
     Ok(path
         .canonicalize()
         .inspect_err(|_| error!(?path, "failed to locate file"))?)
@@ -77,13 +91,13 @@ fn find_and_expand(path: &Path) -> Result<PathBuf, Error> {
 ///
 /// This function will return an error if errors occur in the
 /// filesystem iterator produced by the [`walkdir`] crate.
-pub fn metadata_files<S>(subdir: S) -> Result<impl Iterator<Item = DirEntry>, walkdir::Error>
+pub fn metadata_files<S>(subdir: S) -> Result<impl Iterator<Item = DirEntry>>
 where
     S: AsRef<str>,
 {
     let iterator = WalkDir::new(subdir.as_ref())
         .into_iter()
-        .collect::<Result<Vec<_>, _>>()?
+        .collect::<std::result::Result<Vec<_>, _>>()?
         .into_iter()
         .filter(|file| file.file_type().is_file())
         .filter(|file| {

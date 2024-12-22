@@ -107,11 +107,7 @@ pub enum ComponentAction {
 #[derive(clap::Subcommand, Debug)]
 pub enum ServerAction {
     /// Prepare for the first start of the server.
-    Setup {
-        /// Overwrite the existing server setup if needed.
-        #[arg(long, default_value_t = false)]
-        force: bool,
-    },
+    Setup,
 
     /// Start the server, do nothing if it is already running.
     Start,

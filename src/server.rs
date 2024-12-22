@@ -1,44 +1,48 @@
 use crate::instance::Instance;
 use crate::local_storage;
 use crate::local_storage::PersistedEntity;
-use docker_compose_types::{Compose, Environment, SingleValue};
+use crate::pack::Pack;
+use bon::bon;
+use docker_compose_types::{AdvancedVolumes, Compose, Environment, Service, SingleValue, Volumes};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::fmt;
+use std::{fmt, fs, io};
 
 pub const DEFAULT_MINECRAFT_PORT: u16 = 25565;
 
 pub trait Server: fmt::Debug + Serialize + for<'de> Deserialize<'de> {
-    type Error;
-    type Status;
+    type SetupError;
+    type StartStopError;
 
     /// Prepare everything for the first start of the server.
     ///
     /// # Errors
     ///
     /// ...
-    fn setup(&self) -> Result<(), local_storage::Error>;
+    fn setup() -> Result<Self, Self::SetupError>;
 
     /// Start the hosted server, do nothing if it is already running.
     ///
     /// # Errors
     ///
     /// ...
-    fn start(&self) -> Result<(), Self::Error>;
+    fn start(&self) -> Result<(), Self::StartStopError>;
 
     /// Stop the hosted server, do nothing if it is already stopped.
     ///
     /// # Errors
     ///
     /// ...
-    fn stop(&self) -> Result<(), Self::Error>;
+    fn stop(&self) -> Result<(), Self::StartStopError>;
 
     /// Report the status of the server.
     ///
     /// # Errors
     ///
     /// ...
-    fn status(&self) -> Result<Self::Status, Self::Error>;
+    fn status(&self) -> Result<(), !> {
+        todo!("Querying the server's status isn't yet implemented")
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
@@ -48,11 +52,23 @@ impl PersistedEntity for DockerCompose {
     const FILE_PATH: &'static str = "docker-compose.yml";
 }
 
+#[allow(clippy::empty_enum, reason = "Rises from within bon")]
+#[bon]
 impl DockerCompose {
     pub const MODPACK_PATH: &'static str = "/data/modpack.mrpack";
 
+    #[builder]
     #[must_use]
-    pub fn build_environment(instance: &Instance) -> Environment {
+    pub fn environment(
+        instance: &Instance,
+        operator_username: &str,
+        memlimit_gb: u8,
+        max_players: u16,
+        online_mode: bool,
+        allow_flight: bool,
+        gamemode: &Gamemode,
+        difficulty: &Difficulty,
+    ) -> Environment {
         let environment_hashmap = {
             let mut environment = HashMap::new();
             environment.insert("EULA".into(), Some(SingleValue::String("TRUE".into())));
@@ -71,16 +87,25 @@ impl DockerCompose {
             );
 
             // TODO: Figure out how much MEMORY to allocate.
-            environment.insert("MEMORY".into(), Some(SingleValue::String("12G".into())));
+            environment.insert(
+                "MEMORY".into(),
+                Some(SingleValue::String(format!("{memlimit_gb}G"))),
+            );
             environment.insert("USE_AIKAR_FLAGS".into(), Some(SingleValue::Bool(true)));
             environment.insert("ENABLE_AUTOPAUSE".into(), Some(SingleValue::Bool(true)));
             environment.insert("VIEW_DISTANCE".into(), Some(SingleValue::Unsigned(12)));
-            environment.insert("MODE".into(), Some(SingleValue::String("survival".into())));
+            environment.insert(
+                "MODE".into(),
+                Some(SingleValue::String(gamemode.to_string())),
+            );
             environment.insert(
                 "DIFFICULTY".into(),
-                Some(SingleValue::String("hard".into())),
+                Some(SingleValue::String(difficulty.to_string())),
             );
-            environment.insert("MAX_PLAYERS".into(), Some(SingleValue::Unsigned(4)));
+            environment.insert(
+                "MAX_PLAYERS".into(),
+                Some(SingleValue::Unsigned(max_players.into())),
+            );
             environment.insert("MOTD".into(), Some(SingleValue::String("TODO".into())));
             environment.insert(
                 "ICON".into(),
@@ -90,11 +115,10 @@ impl DockerCompose {
                         .into(),
                 )),
             );
-            environment.insert("ALLOW_FLIGHT".into(), Some(SingleValue::Bool(true)));
-            environment.insert("ONLINE_MODE".into(), Some(SingleValue::Bool(false)));
+            environment.insert("ALLOW_FLIGHT".into(), Some(SingleValue::Bool(allow_flight)));
+            environment.insert("ONLINE_MODE".into(), Some(SingleValue::Bool(online_mode)));
 
             // TODO: Inject the username.
-            let operator_username = "mxxntype";
             let rcon_first_connect = indoc::indoc! {"
                 /whitelist on
                 /whitelist add username
@@ -110,4 +134,149 @@ impl DockerCompose {
 
         Environment::KvPair(environment_hashmap)
     }
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum SetupError {
+    #[error("A local server is already configured for this pack")]
+    AlreadySetUp,
+    #[error(transparent)]
+    Other(#[from] local_storage::Error),
+}
+
+impl Server for DockerCompose {
+    type SetupError = self::SetupError;
+    type StartStopError = std::io::Error;
+
+    fn setup() -> Result<Self, self::SetupError> {
+        let pack = Pack::read()?;
+
+        let data_volume_path = "./server";
+        if let Err(error) = fs::create_dir_all(data_volume_path) {
+            match error.kind() {
+                io::ErrorKind::AlreadyExists => {}
+                _ => return Err(local_storage::Error::from(error).into()),
+            }
+        }
+
+        let volumes = vec![
+            // Minecraft's data (all kinds of state).
+            Volumes::Advanced(AdvancedVolumes {
+                source: Some(data_volume_path.into()),
+                target: "/data".into(),
+                _type: "bind".into(),
+                read_only: false,
+                bind: None,
+                volume: None,
+                tmpfs: None,
+            }),
+            // A "symlink" to our expored modpack.
+            Volumes::Advanced(AdvancedVolumes {
+                source: Some({
+                    pack.export()?;
+                    format!("./{}.mrpack", pack.name)
+                }),
+                target: Self::MODPACK_PATH.into(),
+                _type: "bind".into(),
+                read_only: true,
+                bind: None,
+                volume: None,
+                tmpfs: None,
+            }),
+        ];
+
+        let ports = docker_compose_types::Ports::Short(vec![format!(
+            "{DEFAULT_MINECRAFT_PORT}:{DEFAULT_MINECRAFT_PORT}"
+        )]);
+
+        let hostname = format!("{}_server", pack.name);
+        let image = "itzg/minecraft-server:java17-alpine".to_string();
+        let environment = Self::environment()
+            .instance(&pack.instance)
+            .operator_username("mxxntype")
+            .memlimit_gb(12)
+            .max_players(4)
+            .online_mode(false)
+            .allow_flight(true)
+            .gamemode(&Gamemode::Survival)
+            .difficulty(&Difficulty::Hard)
+            .call();
+
+        let services = HashMap::from([(
+            "server".to_string(),
+            Some(Service {
+                image: Some(image),
+                hostname: Some(hostname.clone()),
+                container_name: Some(hostname),
+                environment,
+                restart: Some("unless-stopped".into()),
+                volumes,
+                networks: docker_compose_types::Networks::Simple(vec![]),
+                ports,
+                ..Default::default()
+            }),
+        )]);
+
+        let manifest = Compose {
+            version: None,
+            services: docker_compose_types::Services(services),
+            volumes: docker_compose_types::TopLevelVolumes::default(),
+            networks: docker_compose_types::ComposeNetworks::default(),
+            service: None,
+            secrets: None,
+            extensions: HashMap::default(),
+        };
+
+        let manifest_path = <Self as PersistedEntity>::FILE_PATH;
+        match std::fs::exists(manifest_path) {
+            Ok(true) => {
+                tracing::warn!(
+                    "A {server_type:?} server is already set up. Delete {manifest_path:?} before re-setup",
+                    server_type = std::any::type_name::<Self>()
+                );
+                return Err(SetupError::AlreadySetUp);
+            }
+            Err(error) => return Err(local_storage::Error::from(error).into()),
+            _ => { /* All fine, go on */ }
+        }
+
+        let docker_compose = Self(manifest);
+        docker_compose.write()?;
+
+        Ok(docker_compose)
+    }
+
+    fn start(&self) -> Result<(), Self::StartStopError> {
+        todo!()
+    }
+
+    fn stop(&self) -> Result<(), Self::StartStopError> {
+        todo!()
+    }
+}
+
+/// The server's default `gamemode` for new players.
+///
+/// Variants are self-explanatory, I think...
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, strum::Display)]
+#[serde(rename_all = "lowercase")]
+#[strum(serialize_all = "lowercase")]
+pub enum Gamemode {
+    Survival,
+    Creative,
+    Hardcore,
+    Spectator,
+}
+
+/// The server's difficulty level.
+///
+/// Variants are self-explanatory, I think...
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, strum::Display)]
+#[serde(rename_all = "lowercase")]
+#[strum(serialize_all = "lowercase")]
+pub enum Difficulty {
+    Peaceful,
+    Easy,
+    Medium,
+    Hard,
 }

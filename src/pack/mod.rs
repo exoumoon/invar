@@ -1,9 +1,13 @@
+use crate::index::{self, Index};
 use crate::instance::Instance;
-use crate::local_storage::PersistedEntity;
+use crate::local_storage::{self, PersistedEntity};
+use color_eyre::owo_colors::OwoColorize;
 use semver::Version;
 use serde::{Deserialize, Serialize};
 use std::fs::{self, File};
-use std::io;
+use std::io::{self, Write};
+use zip::write::SimpleFileOptions;
+use zip::ZipWriter;
 
 /// The "modpack" entity.
 ///
@@ -56,6 +60,33 @@ impl Pack {
             fs::create_dir_all(subdir)?;
             let _ = File::create(format!("{subdir}/.gitkeep"))?;
         }
+
+        Ok(())
+    }
+
+    /// Export this [`Pack`]. See [`crate::index`] for details.
+    ///
+    /// # Errors
+    ///
+    /// This function may return a [`local_storage::Error`]. Look there for
+    /// possible causes.
+    pub fn export(&self) -> local_storage::Result<()> {
+        let files: Vec<index::file::File> = crate::component::load_components()?
+            .into_iter()
+            .map(Into::into)
+            .collect();
+        let index = Index::from_pack_and_files(self, &files);
+        let json = serde_json::to_string_pretty(&index)?;
+        let path = format!("{}.mrpack", self.name);
+
+        tracing::info!(message = "Writing index", target = ?path.yellow().bold());
+        let file = File::create(path)?;
+        let mut mrpack = ZipWriter::new(file);
+        let options =
+            SimpleFileOptions::default().compression_method(zip::CompressionMethod::Deflated);
+        mrpack.start_file("modrinth.index.json", options)?;
+        mrpack.write_all(json.as_bytes())?;
+        mrpack.finish()?;
 
         Ok(())
     }
