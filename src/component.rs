@@ -3,9 +3,10 @@ use crate::instance::{Instance, Loader};
 use crate::local_storage;
 use color_eyre::owo_colors::OwoColorize;
 use serde::{Deserialize, Serialize};
-use std::fs;
+use std::io::ErrorKind;
 use std::path::PathBuf;
 use std::str::FromStr;
+use std::{fs, io};
 use strum::{Display, EnumIter, IntoEnumIterator};
 use tracing::debug;
 use url::Url;
@@ -108,6 +109,52 @@ pub struct Component {
 impl Component {
     /// The suffix (secondary file extension) for local metadata files.
     pub const LOCAL_STORAGE_SUFFIX: &'static str = ".invar.yaml";
+
+    /// Load all [`Component`]s found in the metadata directories.
+    ///
+    /// Only files with names ending in [`Component::LOCAL_STORAGE_SUFFIX`] will
+    /// be loaded.
+    ///
+    /// # Errors
+    ///
+    /// This function will propagate errors occurring while reading
+    /// files or deserialing [`Component`]s from their contents.
+    #[tracing::instrument]
+    pub fn load_all() -> Result<Vec<Self>, local_storage::Error> {
+        let mut components = vec![];
+
+        for file in local_storage::metadata_files(".")? {
+            let path = file.path();
+            debug!(?path, "Found metadata file");
+            let yaml = fs::read_to_string(path)?;
+            let component = serde_yml::from_str(&yaml)?;
+            components.push(component);
+        }
+
+        Ok(components)
+    }
+
+    /// Remove a [`Component`] by slug.
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if there are no components with this
+    /// slug or an error occurs when deleting it.
+    pub fn remove(slug: &str) -> Result<(), local_storage::Error> {
+        let target_filename = format!("{slug}{}", Self::LOCAL_STORAGE_SUFFIX);
+        let candidate = local_storage::metadata_files(".")?.find(|dir_entry| {
+            dir_entry
+                .file_name()
+                .to_str()
+                .is_some_and(|name| name == target_filename)
+        });
+        match candidate {
+            Some(file) => fs::remove_file(file.path())?,
+            None => return Err(io::Error::new(ErrorKind::NotFound, "Failed to find file").into()),
+        }
+
+        Ok(())
+    }
 
     /// Saves this [`Component`] in its metadata directory.
     ///
@@ -289,30 +336,6 @@ pub enum AddError {
     NoFile,
     #[error("Failed to get required input from user")]
     User(#[from] inquire::error::InquireError),
-}
-
-/// Load all [`Component`]s found in the metadata directories.
-///
-/// Only files with names ending in [`Component::LOCAL_STORAGE_SUFFIX`] will be
-/// loaded.
-///
-/// # Errors
-///
-/// This function will propagate errors occurring while reading
-/// files or deserialing [`Component`]s from their contents.
-#[tracing::instrument]
-pub fn load_components() -> Result<Vec<Component>, local_storage::Error> {
-    let mut components = vec![];
-
-    for file in local_storage::metadata_files(".")? {
-        let path = file.path();
-        debug!(?path, "Found metadata file");
-        let yaml = fs::read_to_string(path)?;
-        let component = serde_yml::from_str(&yaml)?;
-        components.push(component);
-    }
-
-    Ok(components)
 }
 
 pub(crate) mod modrinth {

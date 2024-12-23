@@ -1,3 +1,4 @@
+use super::{Difficulty, Gamemode, Server, DEFAULT_MINECRAFT_PORT};
 use crate::instance::Instance;
 use crate::local_storage;
 use crate::local_storage::PersistedEntity;
@@ -6,44 +7,7 @@ use bon::bon;
 use docker_compose_types::{AdvancedVolumes, Compose, Environment, Service, SingleValue, Volumes};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::{fmt, fs, io};
-
-pub const DEFAULT_MINECRAFT_PORT: u16 = 25565;
-
-pub trait Server: fmt::Debug + Serialize + for<'de> Deserialize<'de> {
-    type SetupError;
-    type StartStopError;
-
-    /// Prepare everything for the first start of the server.
-    ///
-    /// # Errors
-    ///
-    /// ...
-    fn setup() -> Result<Self, Self::SetupError>;
-
-    /// Start the hosted server, do nothing if it is already running.
-    ///
-    /// # Errors
-    ///
-    /// ...
-    fn start(&self) -> Result<(), Self::StartStopError>;
-
-    /// Stop the hosted server, do nothing if it is already stopped.
-    ///
-    /// # Errors
-    ///
-    /// ...
-    fn stop(&self) -> Result<(), Self::StartStopError>;
-
-    /// Report the status of the server.
-    ///
-    /// # Errors
-    ///
-    /// ...
-    fn status(&self) -> Result<(), !> {
-        todo!("Querying the server's status isn't yet implemented")
-    }
-}
+use std::{fs, io};
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct DockerCompose(pub Compose);
@@ -144,11 +108,19 @@ pub enum SetupError {
     Other(#[from] local_storage::Error),
 }
 
+#[derive(Debug, thiserror::Error)]
+pub enum StartStopError {
+    #[error(transparent)]
+    ExitCode(#[from] io::Error),
+    #[error("Process terminated by signal")]
+    Terminated,
+}
+
 impl Server for DockerCompose {
     type SetupError = self::SetupError;
-    type StartStopError = std::io::Error;
+    type StartStopError = self::StartStopError;
 
-    fn setup() -> Result<Self, self::SetupError> {
+    fn setup() -> Result<Self, Self::SetupError> {
         let pack = Pack::read()?;
 
         let data_volume_path = "./server";
@@ -242,41 +214,45 @@ impl Server for DockerCompose {
 
         let docker_compose = Self(manifest);
         docker_compose.write()?;
-
         Ok(docker_compose)
     }
 
     fn start(&self) -> Result<(), Self::StartStopError> {
-        todo!()
+        let status = std::process::Command::new("docker")
+            .args([
+                "compose",
+                "--file",
+                <Self as PersistedEntity>::FILE_PATH,
+                "up",
+                "--detach",
+            ])
+            .status()?;
+        if let Some(status_code) = status.code() {
+            match status_code {
+                0 => Ok(()),
+                error => Err(io::Error::from_raw_os_error(error).into()),
+            }
+        } else {
+            Err(StartStopError::Terminated)
+        }
     }
 
     fn stop(&self) -> Result<(), Self::StartStopError> {
-        todo!()
+        let status = std::process::Command::new("docker")
+            .args([
+                "compose",
+                "--file",
+                <Self as PersistedEntity>::FILE_PATH,
+                "down",
+            ])
+            .status()?;
+        if let Some(status_code) = status.code() {
+            match status_code {
+                0 => Ok(()),
+                error => Err(io::Error::from_raw_os_error(error).into()),
+            }
+        } else {
+            Err(StartStopError::Terminated)
+        }
     }
-}
-
-/// The server's default `gamemode` for new players.
-///
-/// Variants are self-explanatory, I think...
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, strum::Display)]
-#[serde(rename_all = "lowercase")]
-#[strum(serialize_all = "lowercase")]
-pub enum Gamemode {
-    Survival,
-    Creative,
-    Hardcore,
-    Spectator,
-}
-
-/// The server's difficulty level.
-///
-/// Variants are self-explanatory, I think...
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, strum::Display)]
-#[serde(rename_all = "lowercase")]
-#[strum(serialize_all = "lowercase")]
-pub enum Difficulty {
-    Peaceful,
-    Easy,
-    Medium,
-    Hard,
 }

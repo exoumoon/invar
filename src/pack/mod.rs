@@ -71,7 +71,7 @@ impl Pack {
     /// This function may return a [`local_storage::Error`]. Look there for
     /// possible causes.
     pub fn export(&self) -> local_storage::Result<()> {
-        let files: Vec<index::file::File> = crate::component::load_components()?
+        let files: Vec<index::file::File> = crate::component::Component::load_all()?
             .into_iter()
             .map(Into::into)
             .collect();

@@ -3,25 +3,21 @@ use clap::Parser;
 use cli::ServerAction;
 use color_eyre::eyre::Report;
 use color_eyre::owo_colors::OwoColorize;
+use color_eyre::Section;
 use eyre::Context;
 use inquire::validator::{StringValidator, Validation};
 use invar::component::Component;
-use invar::index::Index;
 use invar::instance::{Instance, Loader};
-use invar::local_storage::PersistedEntity;
+use invar::local_storage::{Error, PersistedEntity};
 use invar::pack::Pack;
-use invar::server::{DockerCompose, Server};
-use invar::{index, local_storage};
+use invar::server::docker_compose::DockerCompose;
+use invar::server::Server;
 use semver::Version;
 use std::collections::HashSet;
 use std::fmt::Write as FmtWrite;
-use std::fs::File;
-use std::io::prelude::*;
 use std::{fs, io};
 use strum::IntoEnumIterator;
-use tracing::{error, info, instrument, Level};
-use zip::write::SimpleFileOptions;
-use zip::ZipWriter;
+use tracing::{info, instrument, Level};
 
 mod cli;
 
@@ -29,18 +25,65 @@ const DEFAULT_PACK_VERSION: Version = Version::new(0, 1, 0);
 const VERSION_WARNING: &str = "Version verification is not implemented, so entering a non-existent version may result in an unusable modpack.";
 
 fn main() -> Result<(), Report> {
-    color_eyre::install()?;
     let options = Options::parse();
-
-    install_tracing();
+    color_eyre::install()?;
+    install_tracing()?;
 
     let span = tracing::span!(Level::DEBUG, "invar");
     let _guard = span.enter();
 
-    let status = match options.subcommand {
+    let status = run_with_options(options);
+    if let Err(mut report) = status {
+        if let Some(error) = report.downcast_ref::<Error>() {
+            match error {
+                Error::Io { .. } => {
+                    report = report
+                        .with_note(|| "Invar encountered an I/O error.")
+                        .with_suggestion(|| {
+                            "Ensure you're in the right directory and have enough permissions."
+                        });
+                }
+                Error::SerdeYml { .. } | Error::SerdeJson { .. } => {
+                    report = report
+                        .with_note(|| "Invar had an error while (de)serializing data with Serde.")
+                        .with_note(|| "This really shouldn't happen, something is real broken.")
+                        .with_suggestion(|| {
+                            format!("Consider reporting this at {}", env!("CARGO_PKG_HOMEPAGE"))
+                        });
+                }
+                Error::Walkdir { .. } => {
+                    report = report
+                        .with_note(|| "Invar had an error while scanning modpack's files.")
+                        .with_note(|| "Most likely there isn't a modpack in this directory.")
+                        .with_suggestion(|| {
+                            "Ensure you're in the right directory and have enough permissions."
+                        });
+                }
+                Error::Zip { .. } => {
+                    report = report
+                        .with_note(|| "Invar had an error while dealing with Zip archives.")
+                        .with_note(|| "This really shouldn't happen, something is real broken.")
+                        .with_suggestion(|| {
+                            format!("Consider reporting this at {}", env!("CARGO_PKG_HOMEPAGE"))
+                        });
+                }
+            }
+        }
+
+        return Err(report);
+    }
+
+    Ok(())
+}
+
+fn run_with_options(options: Options) -> Result<(), Report> {
+    match options.subcommand {
         Subcommand::Pack { action } => match action {
-            PackAction::Show => show_pack(),
-            PackAction::Export => export_pack(),
+            PackAction::Show => {
+                println!("{}", serde_yml::to_string(&Pack::read()?)?);
+                Ok(())
+            }
+            PackAction::Export => Ok(Pack::read()?.export()?),
             PackAction::Setup {
                 name,
                 minecraft_version,
@@ -55,55 +98,36 @@ fn main() -> Result<(), Report> {
             ComponentAction::Add { ids, show_metadata } => add_component(&ids, show_metadata),
             ComponentAction::Remove { slugs } => remove_component(&slugs),
             ComponentAction::Update { .. } => {
-                eyre::bail!("Updating components isn't yet implemented")
+                let error = eyre::eyre!("Updating components isn't yet implemented")
+                    .with_note(|| "This will be implemented in a future version of Invar.")
+                    .with_suggestion(|| "Remove and re-add this component to update it.");
+                Err(error)
             }
         },
 
         Subcommand::Server { action, .. } => match action {
-            ServerAction::Setup => setup_server(),
-            _ => todo!(),
-        },
-    };
-
-    match status {
-        Ok(()) => Ok(()),
-        Err(report) => {
-            if let Some(invar_error) = report.downcast_ref::<local_storage::Error>() {
-                match invar_error {
-                    local_storage::Error::Io { .. } => {
-                        error!("Looks like Invar encountered an I/O error. Most likely there isn't a modpack in this directory, or for some reason Invar cannot access files inside of it.");
-                    }
-
-                    local_storage::Error::SerdeYml { .. }
-                    | local_storage::Error::SerdeJson { .. } => {
-                        error!("Looks like Invar had an error while (de)serializing data with Serde. This really isn't supposed to happen, something has to be real broken");
-                    }
-
-                    local_storage::Error::Walkdir { .. } => {
-                        error!("Looks like Invar had an error while scanning modpack's files. Most likely there isn't a modpack in this directory, or for some reason Invar cannot access files inside of it.");
-                    }
-
-                    local_storage::Error::Zip { .. } => {
-                        error!("Looks like Invar had an error while dealing with Zip archives. This really isn't supposed to happen, something has to be real broken");
-                    }
-                }
+            ServerAction::Setup => DockerCompose::setup()
+                .map(|_| ())
+                .wrap_err("Failed to setup the server"),
+            ServerAction::Start => DockerCompose::read()?
+                .start()
+                .wrap_err("Failed to start the server"),
+            ServerAction::Stop => DockerCompose::read()?
+                .stop()
+                .wrap_err("Failed to stop the server"),
+            ServerAction::Status => {
+                let error = eyre::eyre!("Checking the status of the server isn't yet implemented")
+                    .with_note(|| "This will be implemented in a future version of Invar.")
+                    .with_suggestion(|| "`docker compose ps` may have what you need.");
+                Err(error)
             }
-
-            error!("NOTE: Inspect the logs above and the the error chain below. Those should explain what happened.");
-
-            Err(report)
-        }
+            ServerAction::Backup { .. } => {
+                let error = eyre::eyre!("Backups aren't yet implemented")
+                    .with_note(|| "This will be implemented in a future version of Invar.");
+                Err(error)
+            }
+        },
     }
-}
-
-#[instrument(level = "debug", ret)]
-fn setup_server() -> Result<(), Report> {
-    let _ = DockerCompose::setup()?;
-    tracing::info!(
-        "{:?} created. Consider taking a look inside to see more details",
-        <DockerCompose as PersistedEntity>::FILE_PATH
-    );
-    Ok(())
 }
 
 #[instrument(level = "debug", ret)]
@@ -189,52 +213,9 @@ fn setup_pack(
 }
 
 #[instrument(level = "debug", ret)]
-fn show_pack() -> Result<(), Report> {
-    let pack = Pack::read()?;
-    println!("{}", serde_yml::to_string(&pack)?);
-    Ok(())
-}
-
-#[instrument(level = "debug", ret)]
-fn export_pack() -> Result<(), Report> {
-    let pack = Pack::read()?;
-    let files: Vec<index::file::File> = invar::component::load_components()?
-        .into_iter()
-        .map(Into::into)
-        .collect();
-    let index = Index::from_pack_and_files(&pack, &files);
-    let json = serde_json::to_string_pretty(&index)?;
-    let path = format!("{}.mrpack", pack.name);
-    info!(message = "Writing index", target = ?path.yellow().bold());
-    let file = File::create(path)?;
-    let mut mrpack = ZipWriter::new(file);
-    let options = SimpleFileOptions::default().compression_method(zip::CompressionMethod::Deflated);
-    mrpack.start_file("modrinth.index.json", options)?;
-    mrpack.write_all(json.as_bytes())?;
-    mrpack.finish()?;
-    Ok(())
-}
-
-#[instrument(level = "debug", ret)]
 fn remove_component(slugs: &[String]) -> Result<(), Report> {
     for slug in slugs {
-        let target_basename = format!("{slug}{}", Component::LOCAL_STORAGE_SUFFIX);
-        let candidate = local_storage::metadata_files(".")
-            .wrap_err("Failed to load local metadata files")?
-            .find(|f| {
-                f.file_name()
-                    .to_str()
-                    .is_some_and(|name| name == target_basename)
-            });
-        match candidate {
-            Some(file) => {
-                info!("Removing {path:?}", path = file.path());
-                fs::remove_file(file.path()).wrap_err("Failed to remove file")?;
-            }
-            None => {
-                tracing::error!("Could not find a component with slug: {slug}");
-            }
-        }
+        Component::remove(slug).wrap_err(format!("Failed to remove the {slug:?} component"))?;
     }
 
     Ok(())
@@ -242,10 +223,10 @@ fn remove_component(slugs: &[String]) -> Result<(), Report> {
 
 #[instrument(level = "debug", ret)]
 fn add_component(ids: &[String], show_metadata: bool) -> Result<(), Report> {
+    let instance = Pack::read()?.instance;
     for id in ids {
-        let instance = Pack::read()?.instance;
         let component = Component::fetch_from_modrinth(id, &instance).wrap_err(format!(
-            "Failed to fetch the \"{id}\" component from Modrinth"
+            "Failed to fetch the {id:?} component from Modrinth"
         ))?;
 
         info!(message = "Adding:", slug = ?id, file_name = ?component.file_name.yellow().bold());
@@ -271,14 +252,14 @@ fn add_component(ids: &[String], show_metadata: bool) -> Result<(), Report> {
 
 #[instrument(level = "debug", ret)]
 fn list_components() -> Result<(), Report> {
-    let components = invar::component::load_components()?;
+    let components = invar::component::Component::load_all()?;
     for c in &components {
         println!(
-            "{type}: {tag}{slug} [{version}]",
+            "{type}: {prefix}{slug} [{version}]",
             type = c.category,
             slug = c.slug.yellow().bold(),
             version = c.file_name.bold(),
-            tag = match &c.tags.main {
+            prefix = match &c.tags.main {
                 Some(tag) => format!("{tag}/"),
                 None => String::new(),
             }
@@ -293,26 +274,25 @@ fn list_components() -> Result<(), Report> {
     Ok(())
 }
 
-fn non_empty_validator(error_msg: &str) -> impl StringValidator + '_ {
-    |input: &str| match input.trim().is_empty() {
-        true => Ok(Validation::Invalid(error_msg.into())),
-        false => Ok(Validation::Valid),
-    }
-}
-
-fn install_tracing() {
+fn install_tracing() -> Result<(), Report> {
     use tracing_error::ErrorLayer;
     use tracing_subscriber::prelude::*;
     use tracing_subscriber::{fmt, EnvFilter};
 
     let format_layer = fmt::layer().pretty().without_time().with_writer(io::stderr);
-    let filter_layer = EnvFilter::try_from_default_env()
-        .or_else(|_| EnvFilter::try_new("info"))
-        .unwrap();
-
+    let filter_layer = EnvFilter::try_from_default_env().or_else(|_| EnvFilter::try_new("info"))?;
     tracing_subscriber::registry()
         .with(filter_layer)
         .with(format_layer)
         .with(ErrorLayer::default())
-        .init();
+        .try_init()?;
+
+    Ok(())
+}
+
+fn non_empty_validator(error_msg: &str) -> impl StringValidator + '_ {
+    |input: &str| match input.trim().is_empty() {
+        true => Ok(Validation::Invalid(error_msg.into())),
+        false => Ok(Validation::Valid),
+    }
 }
