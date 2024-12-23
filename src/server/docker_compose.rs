@@ -7,6 +7,7 @@ use bon::bon;
 use docker_compose_types::{AdvancedVolumes, Compose, Environment, Service, SingleValue, Volumes};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::path::PathBuf;
 use std::{fs, io};
 
 const DEFAULT_ICON_URL: &str =
@@ -109,7 +110,13 @@ impl Server for DockerCompose {
         if let Err(error) = fs::create_dir_all(data_volume_path) {
             match error.kind() {
                 io::ErrorKind::AlreadyExists => {}
-                _ => return Err(local_storage::Error::from(error).into()),
+                _ => {
+                    return Err(local_storage::Error::Io {
+                        source: error,
+                        faulty_path: Some(PathBuf::from(data_volume_path)),
+                    }
+                    .into())
+                }
             }
         }
 
@@ -190,7 +197,13 @@ impl Server for DockerCompose {
                 );
                 return Err(SetupError::AlreadySetUp);
             }
-            Err(error) => return Err(local_storage::Error::from(error).into()),
+            Err(error) => {
+                return Err(local_storage::Error::Io {
+                    source: error,
+                    faulty_path: Some(PathBuf::from(data_volume_path)),
+                }
+                .into())
+            }
             _ => { /* All fine, go on */ }
         }
 

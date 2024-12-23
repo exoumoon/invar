@@ -8,7 +8,6 @@ use std::path::PathBuf;
 use std::str::FromStr;
 use std::{fs, io};
 use strum::Display;
-use tracing::debug;
 use url::Url;
 
 mod tag;
@@ -67,8 +66,10 @@ impl Component {
 
         for file in local_storage::metadata_files(".")? {
             let path = file.path();
-            debug!(?path, "Found metadata file");
-            let yaml = fs::read_to_string(path)?;
+            let yaml = fs::read_to_string(path).map_err(|source| local_storage::Error::Io {
+                source,
+                faulty_path: Some(path.to_path_buf()),
+            })?;
             let component = serde_yml::from_str(&yaml)?;
             components.push(component);
         }
@@ -91,8 +92,18 @@ impl Component {
                 .is_some_and(|name| name == target_filename)
         });
         match candidate {
-            Some(file) => fs::remove_file(file.path())?,
-            None => return Err(io::Error::new(ErrorKind::NotFound, "Failed to find file").into()),
+            Some(file) => {
+                fs::remove_file(file.path()).map_err(|source| local_storage::Error::Io {
+                    source,
+                    faulty_path: Some(file.path().to_path_buf()),
+                })?;
+            }
+            None => {
+                return Err(local_storage::Error::Io {
+                    source: io::Error::new(ErrorKind::NotFound, "Failed to find file"),
+                    faulty_path: None,
+                })
+            }
         }
 
         Ok(())
@@ -112,8 +123,14 @@ impl Component {
     pub fn save_to_metadata_dir(&self) -> Result<(), local_storage::Error> {
         let yaml = serde_yml::to_string(self)?;
         let path = self.local_storage_path();
-        fs::create_dir_all(path.parent().unwrap())?;
-        fs::write(&path, yaml)?;
+        fs::create_dir_all(path.parent().unwrap()).map_err(|source| local_storage::Error::Io {
+            source,
+            faulty_path: Some(path.clone()),
+        })?;
+        fs::write(&path, yaml).map_err(|source| local_storage::Error::Io {
+            source,
+            faulty_path: Some(path.clone()),
+        })?;
 
         Ok(())
     }

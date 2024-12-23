@@ -6,6 +6,7 @@ use semver::Version;
 use serde::{Deserialize, Serialize};
 use std::fs::{self, File};
 use std::io::{self, Write};
+use std::path::PathBuf;
 use zip::write::SimpleFileOptions;
 use zip::ZipWriter;
 
@@ -80,12 +81,20 @@ impl Pack {
         let path = format!("{}.mrpack", self.name);
 
         tracing::info!(message = "Writing index", target = ?path.yellow().bold());
-        let file = File::create(path)?;
+        let file = File::create(&path).map_err(|source| local_storage::Error::Io {
+            source,
+            faulty_path: Some(PathBuf::from(path.clone())),
+        })?;
         let mut mrpack = ZipWriter::new(file);
         let options =
             SimpleFileOptions::default().compression_method(zip::CompressionMethod::Deflated);
         mrpack.start_file("modrinth.index.json", options)?;
-        mrpack.write_all(json.as_bytes())?;
+        mrpack
+            .write_all(json.as_bytes())
+            .map_err(|source| local_storage::Error::Io {
+                source,
+                faulty_path: Some(PathBuf::from(path)),
+            })?;
         mrpack.finish()?;
 
         Ok(())

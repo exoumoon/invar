@@ -2,7 +2,7 @@ use crate::component::Component;
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use std::{fs, io};
-use tracing::{error, instrument};
+use tracing::instrument;
 use walkdir::WalkDir;
 
 pub type Result<T> = std::result::Result<T, self::Error>;
@@ -10,8 +10,11 @@ pub type Result<T> = std::result::Result<T, self::Error>;
 /// Possible errors that may arise while interacting with local storage.
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
-    #[error("An I/O error occurred")]
-    Io(#[from] io::Error),
+    #[error("An I/O error occurred, faulty path: {faulty_path:?}")]
+    Io {
+        source: io::Error,
+        faulty_path: Option<PathBuf>,
+    },
 
     #[error(transparent)]
     SerdeYml(#[from] serde_yml::Error),
@@ -41,8 +44,10 @@ pub trait PersistedEntity: Serialize + for<'de> Deserialize<'de> {
     #[instrument]
     fn read() -> Result<Self> {
         let path = find_and_expand(Path::new(Self::FILE_PATH))?;
-        let yaml =
-            fs::read_to_string(&path).inspect_err(|_| error!(?path, "failed to read file"))?;
+        let yaml = fs::read_to_string(&path).map_err(|source| Error::Io {
+            source,
+            faulty_path: Some(path.clone()),
+        })?;
         let entity = serde_yml::from_str(&yaml)?;
         Ok(entity)
     }
@@ -59,7 +64,10 @@ pub trait PersistedEntity: Serialize + for<'de> Deserialize<'de> {
     fn write(&self) -> Result<()> {
         let path = PathBuf::from(Self::FILE_PATH);
         let yaml = serde_yml::to_string(self)?;
-        fs::write(&path, yaml).inspect_err(|_| error!(target = ?path, "failed to write file"))?;
+        fs::write(&path, yaml).map_err(|source| Error::Io {
+            source,
+            faulty_path: Some(path.clone()),
+        })?;
         Ok(())
     }
 }
@@ -91,7 +99,8 @@ where
 // NOTE: A shorthand for `expanding` a path and logging an error if one arises
 // in the process.
 fn find_and_expand(path: &Path) -> Result<PathBuf> {
-    Ok(path
-        .canonicalize()
-        .inspect_err(|_| error!(?path, "failed to locate file"))?)
+    path.canonicalize().map_err(|source| Error::Io {
+        source,
+        faulty_path: Some(path.to_path_buf()),
+    })
 }

@@ -37,7 +37,7 @@ fn main() -> Result<(), Report> {
         && let Some(error) = report.downcast_ref::<Error>()
     {
         match error {
-            Error::Io(_) => {
+            Error::Io { .. } => {
                 report = report
                     .with_note(|| "Invar encountered an I/O error.")
                     .with_suggestion(|| {
