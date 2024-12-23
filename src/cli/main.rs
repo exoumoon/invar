@@ -1,5 +1,3 @@
-#![feature(let_chains)]
-
 use crate::cli::{ComponentAction, Options, PackAction, Subcommand};
 use clap::Parser;
 use cli::ServerAction;
@@ -33,40 +31,40 @@ fn main() -> Result<(), Report> {
     let _guard = span.enter();
 
     let status = run_with_options(options);
-    if let Err(mut report) = status
-        && let Some(error) = report.downcast_ref::<Error>()
-    {
-        match error {
-            Error::Io { .. } => {
-                report = report
-                    .with_note(|| "Invar encountered an I/O error.")
-                    .with_suggestion(|| {
-                        "Ensure you're in the right directory and have enough permissions."
-                    });
-            }
-            Error::SerdeYml(_) | Error::SerdeJson(_) => {
-                report = report
-                    .with_note(|| "Invar had an error while (de)serializing data with Serde.")
-                    .with_note(|| "This really shouldn't happen, something is real broken.")
-                    .with_suggestion(|| {
-                        format!("Consider reporting this at {}", env!("CARGO_PKG_HOMEPAGE"))
-                    });
-            }
-            Error::Walkdir(_) => {
-                report = report
-                    .with_note(|| "Invar had an error while scanning modpack's files.")
-                    .with_note(|| "Most likely there isn't a modpack in this directory.")
-                    .with_suggestion(|| {
-                        "Ensure you're in the right directory and have enough permissions."
-                    });
-            }
-            Error::Zip(_) => {
-                report = report
-                    .with_note(|| "Invar had an error while dealing with Zip archives.")
-                    .with_note(|| "This really shouldn't happen, something is real broken.")
-                    .with_suggestion(|| {
-                        format!("Consider reporting this at {}", env!("CARGO_PKG_HOMEPAGE"))
-                    });
+    if let Err(mut report) = status {
+        if let Some(error) = report.downcast_ref::<Error>() {
+            match error {
+                Error::Io { .. } => {
+                    report = report
+                        .with_note(|| "Invar encountered an I/O error.")
+                        .with_suggestion(|| {
+                            "Ensure you're in the right directory and have enough permissions."
+                        });
+                }
+                Error::SerdeYml(_) | Error::SerdeJson(_) => {
+                    report = report
+                        .with_note(|| "Invar had an error while (de)serializing data with Serde.")
+                        .with_note(|| "This really shouldn't happen, something is real broken.")
+                        .with_suggestion(|| {
+                            format!("Consider reporting this at {}", env!("CARGO_PKG_HOMEPAGE"))
+                        });
+                }
+                Error::Walkdir(_) => {
+                    report = report
+                        .with_note(|| "Invar had an error while scanning modpack's files.")
+                        .with_note(|| "Most likely there isn't a modpack in this directory.")
+                        .with_suggestion(|| {
+                            "Ensure you're in the right directory and have enough permissions."
+                        });
+                }
+                Error::Zip(_) => {
+                    report = report
+                        .with_note(|| "Invar had an error while dealing with Zip archives.")
+                        .with_note(|| "This really shouldn't happen, something is real broken.")
+                        .with_suggestion(|| {
+                            format!("Consider reporting this at {}", env!("CARGO_PKG_HOMEPAGE"))
+                        });
+                }
             }
         }
 
