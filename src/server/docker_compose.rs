@@ -9,6 +9,9 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::{fs, io};
 
+const DEFAULT_ICON_URL: &str =
+    "https://raw.githubusercontent.com/exoumoon/ground-zero/main/assets/icon.png";
+
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct DockerCompose(pub Compose);
 
@@ -33,70 +36,49 @@ impl DockerCompose {
         gamemode: &Gamemode,
         difficulty: &Difficulty,
     ) -> Environment {
-        let environment_hashmap = {
-            let mut environment = HashMap::new();
-            environment.insert("EULA".into(), Some(SingleValue::String("TRUE".into())));
-            environment.insert(
-                "VERSION".into(),
-                Some(SingleValue::String(instance.minecraft_version.to_string())),
-            );
-            environment.insert("TYPE".into(), Some(SingleValue::String("MODRINTH".into())));
-            environment.insert(
-                format!("{}_VERSION", instance.loader.to_string().to_uppercase()),
-                Some(SingleValue::String(instance.loader_version.to_string())),
-            );
-            environment.insert(
-                "MODRINTH_MODPACK".into(),
-                Some(SingleValue::String(Self::MODPACK_PATH.into())),
-            );
+        let kv_pairs = [
+            ("EULA", SingleValue::String("TRUE".into())),
+            (
+                "VERSION",
+                SingleValue::String(instance.minecraft_version.to_string()),
+            ),
+            ("TYPE", SingleValue::String("MODRINTH".into())),
+            (
+                format!("{}_VERSION", instance.loader.to_string().to_uppercase()).as_str(),
+                SingleValue::String(instance.loader_version.to_string()),
+            ),
+            (
+                "MODRINTH_MODPACK",
+                SingleValue::String(Self::MODPACK_PATH.into()),
+            ),
+            ("MEMORY", SingleValue::String(format!("{memlimit_gb}G"))),
+            ("USE_AIKAR_FLAGS", SingleValue::Bool(true)),
+            ("ENABLE_AUTOPAUSE", SingleValue::Bool(true)),
+            ("VIEW_DISTANCE", SingleValue::Unsigned(12)),
+            ("MODE", SingleValue::String(gamemode.to_string())),
+            ("DIFFICULTY", SingleValue::String(difficulty.to_string())),
+            ("MAX_PLAYERS", SingleValue::Unsigned(max_players.into())),
+            ("MOTD", SingleValue::String("TODO".into())),
+            ("ICON", SingleValue::String(DEFAULT_ICON_URL.into())),
+            ("ALLOW_FLIGHT", SingleValue::Bool(allow_flight)),
+            ("ONLINE_MODE", SingleValue::Bool(online_mode)),
+            {
+                let rcon_first_connect = indoc::indoc! {"
+                        /whitelist on
+                        /whitelist add username
+                        /op username
+                    "}
+                .replace("username", operator_username);
+                (
+                    "RCON_CMDS_FIRST_CONNECT",
+                    SingleValue::String(rcon_first_connect),
+                )
+            },
+        ]
+        .map(|(key, value)| (key.to_string(), Some(value)));
+        let kv_hashmap = HashMap::from_iter(kv_pairs);
 
-            // TODO: Figure out how much MEMORY to allocate.
-            environment.insert(
-                "MEMORY".into(),
-                Some(SingleValue::String(format!("{memlimit_gb}G"))),
-            );
-            environment.insert("USE_AIKAR_FLAGS".into(), Some(SingleValue::Bool(true)));
-            environment.insert("ENABLE_AUTOPAUSE".into(), Some(SingleValue::Bool(true)));
-            environment.insert("VIEW_DISTANCE".into(), Some(SingleValue::Unsigned(12)));
-            environment.insert(
-                "MODE".into(),
-                Some(SingleValue::String(gamemode.to_string())),
-            );
-            environment.insert(
-                "DIFFICULTY".into(),
-                Some(SingleValue::String(difficulty.to_string())),
-            );
-            environment.insert(
-                "MAX_PLAYERS".into(),
-                Some(SingleValue::Unsigned(max_players.into())),
-            );
-            environment.insert("MOTD".into(), Some(SingleValue::String("TODO".into())));
-            environment.insert(
-                "ICON".into(),
-                Some(SingleValue::String(
-                    // TODO: Inject an icon.
-                    "https://raw.githubusercontent.com/exoumoon/ground-zero/main/assets/icon.png"
-                        .into(),
-                )),
-            );
-            environment.insert("ALLOW_FLIGHT".into(), Some(SingleValue::Bool(allow_flight)));
-            environment.insert("ONLINE_MODE".into(), Some(SingleValue::Bool(online_mode)));
-
-            // TODO: Inject the username.
-            let rcon_first_connect = indoc::indoc! {"
-                /whitelist on
-                /whitelist add username
-                /op username
-            "}
-            .replace("username", operator_username);
-            environment.insert(
-                "RCON_CMDS_FIRST_CONNECT".into(),
-                Some(SingleValue::String(rcon_first_connect)),
-            );
-            environment
-        };
-
-        Environment::KvPair(environment_hashmap)
+        Environment::KvPair(kv_hashmap)
     }
 }
 
