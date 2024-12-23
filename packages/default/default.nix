@@ -5,10 +5,10 @@
 }:
 
 let
-    toolchain = (pkgs.rustChannelOf {
-        rustToolchain = ../../rust-toolchain.toml;
-        sha256 = "VZZnlyP69+Y3crrLHQyJirqlHrTtGTsyiSnZB8jEvVo=";
-    }).rust;
+    toolchain = with inputs.fenix.packages.${pkgs.system}; fromToolchainFile {
+        file = ../../rust-toolchain.toml;
+        sha256 = "sha256-xpStU6xQanJNSXnOU9AY7nz9Ycjlv0/eQkNHP1LSBoc=";
+    };
 
     naersk' = pkgs.callPackage inputs.naersk {
         cargo = toolchain;
