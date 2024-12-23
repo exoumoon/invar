@@ -142,7 +142,7 @@ impl Server for DockerCompose {
                 volume: None,
                 tmpfs: None,
             }),
-            // A "symlink" to our expored modpack.
+            // A "symlink" to our exported modpack.
             Volumes::Advanced(AdvancedVolumes {
                 source: Some({
                     pack.export()?;
