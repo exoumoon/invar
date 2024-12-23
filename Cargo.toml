@@ -3,7 +3,7 @@ cargo-features = ["codegen-backend"]
 [package]
 name = "invar"
 description = "CLI management tool for modded Minecraft servers"
-version = "0.5.1"
+version = "0.5.2"
 edition = "2021"
 authors = ["mxxntype <59417007+mxxntype@users.noreply.github.com>"]
 homepage = "https://github.com/exoumoon/invar"

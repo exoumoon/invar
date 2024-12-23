@@ -1,6 +1,3 @@
-/// An entity representing a single project in the `files` array.
-pub mod file;
-
 use crate::instance::Loader;
 use crate::pack::Pack;
 use file::File;
@@ -8,6 +5,10 @@ use semver::Version;
 use serde::Serialize;
 use std::collections::HashMap;
 
+/// An entity representing a single project in the `files` array.
+pub mod file;
+
+/// [Modrinth's `.mrpack`](https://support.modrinth.com/en/articles/8802351-modrinth-modpack-format-mrpack) format structure.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Index<'pack, 'files> {

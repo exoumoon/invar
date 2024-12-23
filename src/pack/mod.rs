@@ -9,7 +9,7 @@ use std::io::{self, Write};
 use zip::write::SimpleFileOptions;
 use zip::ZipWriter;
 
-/// The "modpack" entity.
+/// The top-level "modpack" entity.
 ///
 /// A [`Pack`] represents a Minecraft [`Instance`] (with a
 /// [`Loader`](crate::instance::Loader)), and all the mods that are in it,

@@ -1,3 +1,5 @@
+#![feature(let_chains)]
+
 use crate::cli::{ComponentAction, Options, PackAction, Subcommand};
 use clap::Parser;
 use cli::ServerAction;
@@ -6,12 +8,10 @@ use color_eyre::owo_colors::OwoColorize;
 use color_eyre::Section;
 use eyre::Context;
 use inquire::validator::{StringValidator, Validation};
-use invar::component::Component;
-use invar::instance::{Instance, Loader};
 use invar::local_storage::{Error, PersistedEntity};
-use invar::pack::Pack;
 use invar::server::docker_compose::DockerCompose;
 use invar::server::Server;
+use invar::{Component, Instance, Loader, Pack};
 use semver::Version;
 use std::collections::HashSet;
 use std::fmt::Write as FmtWrite;
@@ -33,40 +33,40 @@ fn main() -> Result<(), Report> {
     let _guard = span.enter();
 
     let status = run_with_options(options);
-    if let Err(mut report) = status {
-        if let Some(error) = report.downcast_ref::<Error>() {
-            match error {
-                Error::Io(_) => {
-                    report = report
-                        .with_note(|| "Invar encountered an I/O error.")
-                        .with_suggestion(|| {
-                            "Ensure you're in the right directory and have enough permissions."
-                        });
-                }
-                Error::SerdeYml(_) | Error::SerdeJson(_) => {
-                    report = report
-                        .with_note(|| "Invar had an error while (de)serializing data with Serde.")
-                        .with_note(|| "This really shouldn't happen, something is real broken.")
-                        .with_suggestion(|| {
-                            format!("Consider reporting this at {}", env!("CARGO_PKG_HOMEPAGE"))
-                        });
-                }
-                Error::Walkdir(_) => {
-                    report = report
-                        .with_note(|| "Invar had an error while scanning modpack's files.")
-                        .with_note(|| "Most likely there isn't a modpack in this directory.")
-                        .with_suggestion(|| {
-                            "Ensure you're in the right directory and have enough permissions."
-                        });
-                }
-                Error::Zip(_) => {
-                    report = report
-                        .with_note(|| "Invar had an error while dealing with Zip archives.")
-                        .with_note(|| "This really shouldn't happen, something is real broken.")
-                        .with_suggestion(|| {
-                            format!("Consider reporting this at {}", env!("CARGO_PKG_HOMEPAGE"))
-                        });
-                }
+    if let Err(mut report) = status
+        && let Some(error) = report.downcast_ref::<Error>()
+    {
+        match error {
+            Error::Io(_) => {
+                report = report
+                    .with_note(|| "Invar encountered an I/O error.")
+                    .with_suggestion(|| {
+                        "Ensure you're in the right directory and have enough permissions."
+                    });
+            }
+            Error::SerdeYml(_) | Error::SerdeJson(_) => {
+                report = report
+                    .with_note(|| "Invar had an error while (de)serializing data with Serde.")
+                    .with_note(|| "This really shouldn't happen, something is real broken.")
+                    .with_suggestion(|| {
+                        format!("Consider reporting this at {}", env!("CARGO_PKG_HOMEPAGE"))
+                    });
+            }
+            Error::Walkdir(_) => {
+                report = report
+                    .with_note(|| "Invar had an error while scanning modpack's files.")
+                    .with_note(|| "Most likely there isn't a modpack in this directory.")
+                    .with_suggestion(|| {
+                        "Ensure you're in the right directory and have enough permissions."
+                    });
+            }
+            Error::Zip(_) => {
+                report = report
+                    .with_note(|| "Invar had an error while dealing with Zip archives.")
+                    .with_note(|| "This really shouldn't happen, something is real broken.")
+                    .with_suggestion(|| {
+                        format!("Consider reporting this at {}", env!("CARGO_PKG_HOMEPAGE"))
+                    });
             }
         }
 
@@ -252,7 +252,7 @@ fn add_component(ids: &[String], show_metadata: bool) -> Result<(), Report> {
 
 #[instrument(level = "debug", ret)]
 fn list_components() -> Result<(), Report> {
-    let components = invar::component::Component::load_all()?;
+    let components = invar::Component::load_all()?;
     for c in &components {
         println!(
             "{type}: {prefix}{slug} [{version}]",
@@ -278,7 +278,6 @@ fn install_tracing() -> Result<(), Report> {
     use tracing_error::ErrorLayer;
     use tracing_subscriber::prelude::*;
     use tracing_subscriber::{fmt, EnvFilter};
-
     let format_layer = fmt::layer().pretty().without_time().with_writer(io::stderr);
     let filter_layer = EnvFilter::try_from_default_env().or_else(|_| EnvFilter::try_new("info"))?;
     tracing_subscriber::registry()
@@ -286,7 +285,6 @@ fn install_tracing() -> Result<(), Report> {
         .with(format_layer)
         .with(ErrorLayer::default())
         .try_init()?;
-
     Ok(())
 }
 

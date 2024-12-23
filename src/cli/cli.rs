@@ -1,7 +1,7 @@
 use clap::builder::styling::AnsiColor::{BrightBlue, White, Yellow};
 use clap::builder::Styles;
 use clap::Parser;
-use invar::instance::Loader;
+use invar::Loader;
 use semver::Version;
 
 /// Styling for [`clap`]'s CLI interface.

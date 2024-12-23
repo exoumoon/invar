@@ -25,7 +25,7 @@ pub struct File {
     /// An array containing HTTPS URLs where this file may be downloaded.
     pub(crate) downloads: Vec<Url>,
     /// An integer containing the size of the file, in bytes.
-    pub(crate) file_size: usize,
+    pub file_size: usize,
 }
 
 impl From<Component> for File {
