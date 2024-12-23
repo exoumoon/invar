@@ -36,14 +36,14 @@ fn main() -> Result<(), Report> {
     if let Err(mut report) = status {
         if let Some(error) = report.downcast_ref::<Error>() {
             match error {
-                Error::Io { .. } => {
+                Error::Io(_) => {
                     report = report
                         .with_note(|| "Invar encountered an I/O error.")
                         .with_suggestion(|| {
                             "Ensure you're in the right directory and have enough permissions."
                         });
                 }
-                Error::SerdeYml { .. } | Error::SerdeJson { .. } => {
+                Error::SerdeYml(_) | Error::SerdeJson(_) => {
                     report = report
                         .with_note(|| "Invar had an error while (de)serializing data with Serde.")
                         .with_note(|| "This really shouldn't happen, something is real broken.")
@@ -51,7 +51,7 @@ fn main() -> Result<(), Report> {
                             format!("Consider reporting this at {}", env!("CARGO_PKG_HOMEPAGE"))
                         });
                 }
-                Error::Walkdir { .. } => {
+                Error::Walkdir(_) => {
                     report = report
                         .with_note(|| "Invar had an error while scanning modpack's files.")
                         .with_note(|| "Most likely there isn't a modpack in this directory.")
@@ -59,7 +59,7 @@ fn main() -> Result<(), Report> {
                             "Ensure you're in the right directory and have enough permissions."
                         });
                 }
-                Error::Zip { .. } => {
+                Error::Zip(_) => {
                     report = report
                         .with_note(|| "Invar had an error while dealing with Zip archives.")
                         .with_note(|| "This really shouldn't happen, something is real broken.")

@@ -7,85 +7,12 @@ use std::io::ErrorKind;
 use std::path::PathBuf;
 use std::str::FromStr;
 use std::{fs, io};
-use strum::{Display, EnumIter, IntoEnumIterator};
+use strum::Display;
 use tracing::debug;
 use url::Url;
 
-/// Possible types (categories) of [`Component`]s.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Display)]
-#[serde(rename_all = "lowercase")]
-pub enum Category {
-    Mod,
-    Resourcepack,
-    #[serde(alias = "shaderpack")]
-    Shader,
-    Datapack,
-}
-
-impl From<Category> for PathBuf {
-    fn from(category: Category) -> Self {
-        Self::from(match category {
-            Category::Mod => "mods",
-            Category::Resourcepack => "resourcepacks",
-            Category::Datapack => "datapacks",
-            // WARN: We do keep it in `shaders/` in local storage, but Minecraft expects it in
-            // `shaderpacks/`.
-            Category::Shader => "shaderpacks",
-        })
-    }
-}
-
-/// Possible tags that can be associated with a [`Component`].
-///
-/// A [`Component`] would usually have a "main" tag and "other" tags.
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Display, EnumIter)]
-#[serde(rename_all = "lowercase")]
-pub enum Tag {
-    /// Stuff that adds weapons and/or combat mechanics, like **Better Combat**.
-    Combat,
-    /// Stuff that adds compatibility between other components and/or
-    /// [`Loader`]s.
-    Compatibility,
-    /// An uncategorized tag added by the user.
-    #[strum(to_string = "{0}")]
-    Custom(String),
-    /// Stuff that adds new or modifies existing dimensions.
-    Dimensions,
-    /// Stuff that adds new food, crops and animals, like **Farmer's Delight**.
-    Farming,
-    /// Stuff that adds new weapons, tools and armor.
-    Gear,
-    /// Libraries for other components, like **Cloth Config API** or **Zeta**.
-    Library,
-    /// Stuff that adds new hostile mobs to the game, like **Born in Chaos**.
-    Mobs,
-    /// Overworld generation stuff, like **Tectonic** and **Geophilic**.
-    Overworld,
-    /// Stuff that improves the game's performance, like **Sodium**.
-    Performance,
-    /// Stuff that tweaks the game's progression, like **Improvable Skills**.
-    Progression,
-    /// Quality-of-Life components, like **Quark**.
-    Qol,
-    /// Stuff that expands the game's storage systems, like **Expanded
-    /// Storage**.
-    Storage,
-    /// Stuff that introduces technology to the game, like **Create** or
-    /// **AE2**.
-    Technology,
-    /// Stuff that improves the game's visuals, like **Euphoria Patches** or
-    /// **Wakes**.
-    Visual,
-    /// Stuff that adds new wildlife to the game, like **Alex's Mobs**.
-    Wildlife,
-}
-
-/// Helper struct to group together [`Component`] tagging information.
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
-pub struct TagInformation {
-    pub main: Option<Tag>,
-    pub others: Vec<Tag>,
-}
+mod tag;
+pub use tag::*;
 
 /// A (runtime) modpack component.
 ///
@@ -97,13 +24,25 @@ pub struct TagInformation {
 pub struct Component {
     pub slug: String,
     pub category: Category,
-    pub tags: TagInformation,
+    pub tags: tag::TagInformation,
     pub environment: Env,
     pub version_id: String,
     pub file_name: String,
     pub file_size: usize,
     pub download_url: Url,
     pub hashes: Hashes,
+}
+
+/// Possible types (categories) of [`Component`]s.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Display)]
+#[serde(rename_all = "lowercase")]
+pub enum Category {
+    Mod,
+    Resourcepack,
+    #[serde(alias = "shaderpack")]
+    Shader,
+    Datapack,
+    Config,
 }
 
 impl Component {
@@ -262,12 +201,12 @@ impl Component {
         };
 
         let file = version.files.first().ok_or(AddError::NoFile)?;
-        let main_tag = self::pick_main_tag()?;
-        let other_tags = self::pick_secondary_tags(main_tag.as_ref())?;
+        let main_tag = self::tag::pick_main_tag()?;
+        let other_tags = self::tag::pick_secondary_tags(main_tag.as_ref())?;
         let component = Self {
             slug: slug.to_owned(),
             category: metadata.category,
-            tags: TagInformation {
+            tags: tag::TagInformation {
                 main: main_tag,
                 others: other_tags,
             },
@@ -286,43 +225,20 @@ impl Component {
     }
 }
 
-fn pick_main_tag() -> Result<Option<Tag>, AddError> {
-    let main_tag: Option<Tag> = {
-        let message = "Choose the main tag for this component:";
-        let options = Tag::iter()
-            .filter(|tag| !matches!(tag, Tag::Custom(_)))
-            .collect();
-        match inquire::Select::new(message, options)
-            .with_page_size(Tag::iter().count())
-            .with_help_message("Skip with [Escape] to provide a custom tag")
-            .prompt_skippable()?
-        {
-            tag @ Some(_) => tag,
-            None => {
-                let message = "Provide a custom tag for this component:";
-                inquire::Text::new(message)
-                    .prompt_skippable()?
-                    .map(|tag| tag.trim().to_lowercase())
-                    .map(Tag::Custom)
-            }
-        }
-    };
-    Ok(main_tag)
-}
-
-fn pick_secondary_tags(main_tag: Option<&Tag>) -> Result<Vec<Tag>, AddError> {
-    let other_tags: Vec<Tag> = {
-        let message = "Add some additional tags for this component?";
-        let options = Tag::iter()
-            .filter(|tag| !matches!(tag, Tag::Custom(_)) && main_tag != Some(tag))
-            .collect();
-        inquire::MultiSelect::new(message, options)
-            .with_page_size(Tag::iter().count())
-            .with_help_message("This step can be freely skipped.")
-            .prompt_skippable()?
-            .unwrap_or_default()
-    };
-    Ok(other_tags)
+/// This [`From`] implementation represents the [`Category`] to `folder
+/// in minecraft's data directory` transformation.
+impl From<Category> for PathBuf {
+    fn from(category: Category) -> Self {
+        Self::from(match category {
+            Category::Mod => "mods",
+            Category::Resourcepack => "resourcepacks",
+            Category::Datapack => "datapacks",
+            // WARN: We do keep it in `shaders/` in local storage, but Minecraft expects it in
+            // `shaderpacks/`.
+            Category::Shader => "shaderpacks",
+            Category::Config => "config",
+        })
+    }
 }
 
 /// Errors that may arise when adding a new [`Component`].

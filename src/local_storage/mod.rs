@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use std::{fs, io};
 use tracing::{error, instrument};
-use walkdir::{DirEntry, WalkDir};
+use walkdir::WalkDir;
 
 pub type Result<T> = std::result::Result<T, self::Error>;
 
@@ -11,34 +11,19 @@ pub type Result<T> = std::result::Result<T, self::Error>;
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
     #[error("An I/O error occurred")]
-    Io {
-        #[from]
-        source: io::Error,
-    },
+    Io(#[from] io::Error),
 
     #[error(transparent)]
-    SerdeYml {
-        #[from]
-        source: serde_yml::Error,
-    },
+    SerdeYml(#[from] serde_yml::Error),
 
     #[error(transparent)]
-    SerdeJson {
-        #[from]
-        source: serde_json::Error,
-    },
+    SerdeJson(#[from] serde_json::Error),
 
     #[error(transparent)]
-    Zip {
-        #[from]
-        source: zip::result::ZipError,
-    },
+    Zip(#[from] zip::result::ZipError),
 
     #[error(transparent)]
-    Walkdir {
-        #[from]
-        source: walkdir::Error,
-    },
+    Walkdir(#[from] walkdir::Error),
 }
 
 /// A trait that represents an entity (type) that can be persisted in a file.
@@ -79,23 +64,17 @@ pub trait PersistedEntity: Serialize + for<'de> Deserialize<'de> {
     }
 }
 
-fn find_and_expand(path: &Path) -> Result<PathBuf> {
-    Ok(path
-        .canonicalize()
-        .inspect_err(|_| error!(?path, "failed to locate file"))?)
-}
-
 /// Iterate over all metadata files in local storage.
 ///
 /// # Errors
 ///
 /// This function will return an error if errors occur in the
 /// filesystem iterator produced by the [`walkdir`] crate.
-pub fn metadata_files<S>(subdir: S) -> Result<impl Iterator<Item = DirEntry>>
+pub fn metadata_files<P>(path: P) -> Result<impl Iterator<Item = walkdir::DirEntry>>
 where
-    S: AsRef<str>,
+    P: AsRef<Path>,
 {
-    let iterator = WalkDir::new(subdir.as_ref())
+    let iterator = WalkDir::new(path.as_ref())
         .into_iter()
         .collect::<std::result::Result<Vec<_>, _>>()?
         .into_iter()
@@ -107,4 +86,12 @@ where
         });
 
     Ok(iterator)
+}
+
+// NOTE: A shorthand for `expanding` a path and logging an error if one arises
+// in the process.
+fn find_and_expand(path: &Path) -> Result<PathBuf> {
+    Ok(path
+        .canonicalize()
+        .inspect_err(|_| error!(?path, "failed to locate file"))?)
 }
