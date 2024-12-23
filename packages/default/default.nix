@@ -1,11 +1,7 @@
-{
-    inputs,
-    pkgs,
-    ...
-}:
+{ inputs, pkgs, ... }:
 
 let
-    toolchain = with inputs.fenix.packages.${pkgs.system}; fromToolchainFile {
+    toolchain = inputs.fenix.packages.${pkgs.system}.fromToolchainFile {
         file = ../../rust-toolchain.toml;
         sha256 = "sha256-xpStU6xQanJNSXnOU9AY7nz9Ycjlv0/eQkNHP1LSBoc=";
     };
@@ -16,6 +12,4 @@ let
     };
 in
 
-naersk'.buildPackage {
-    src = ../..;
-}
+naersk'.buildPackage { src = ../..; }
