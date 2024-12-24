@@ -1,6 +1,6 @@
 use crate::cli::{ComponentAction, Options, PackAction, Subcommand};
 use clap::Parser;
-use cli::ServerAction;
+use cli::{BackupAction, OutputFormat, ServerAction};
 use color_eyre::eyre::Report;
 use color_eyre::owo_colors::OwoColorize;
 use color_eyre::Section;
@@ -8,8 +8,8 @@ use eyre::Context;
 use inquire::validator::{StringValidator, Validation};
 use invar::local_storage::{Error, PersistedEntity};
 use invar::server::docker_compose::DockerCompose;
-use invar::server::Server;
-use invar::{Component, Instance, Loader, Pack};
+use invar::server::{backup, Server};
+use invar::{Component, Instance, Loader, Pack, Settings};
 use semver::Version;
 use std::collections::HashSet;
 use std::fmt::Write as FmtWrite;
@@ -103,7 +103,7 @@ fn run_with_options(options: Options) -> Result<(), Report> {
             }
         },
 
-        Subcommand::Server { action, .. } => match action {
+        Subcommand::Server { ref action, .. } => match action {
             ServerAction::Setup => DockerCompose::setup()
                 .map(|_| ())
                 .wrap_err("Failed to setup the server"),
@@ -119,13 +119,56 @@ fn run_with_options(options: Options) -> Result<(), Report> {
                     .with_suggestion(|| "`docker compose ps` may have what you need.");
                 Err(error)
             }
-            ServerAction::Backup { .. } => {
-                let error = eyre::eyre!("Backups aren't yet implemented")
-                    .with_note(|| "This will be implemented in a future version of Invar.");
-                Err(error)
-            }
+
+            ServerAction::Backup { action } => match action {
+                BackupAction::List => backup_list(&options),
+                BackupAction::Create => backup_create(),
+                BackupAction::Gc => backup_gc(&options),
+            },
         },
     }
+}
+
+fn backup_list(options: &Options) -> Result<(), Report> {
+    let backups = backup::get_all_backups()?;
+    match options.output_format {
+        OutputFormat::Human => {
+            for backup in backups.iter().rev() {
+                println!("{backup}");
+            }
+        }
+        OutputFormat::Yaml => {
+            println!("{}", serde_yml::to_string(&backups)?);
+        }
+    };
+    Ok(())
+}
+
+fn backup_create() -> Result<(), Report> {
+    backup::create_new(Some("ondemand"))?;
+    Ok(())
+}
+
+fn backup_gc(options: &Options) -> Result<(), Report> {
+    let gc_result = backup::gc().wrap_err("Failed to garbage-collect backups")?;
+    match options.output_format {
+        OutputFormat::Yaml => println!("{}", serde_yml::to_string(&gc_result)?),
+        OutputFormat::Human => {
+            if gc_result.removed.is_empty() {
+                println!("All backups are fresh enough to keep.");
+            } else {
+                println!("Deleted the following backups:");
+                for deleted_backup in gc_result.removed.iter().rev() {
+                    println!("{deleted_backup}");
+                }
+            }
+            println!("Remaining backups:");
+            for backup in gc_result.remaining.iter().rev() {
+                println!("{backup}");
+            }
+        }
+    }
+    Ok(())
 }
 
 #[instrument(level = "debug", ret)]
@@ -140,7 +183,7 @@ fn setup_pack(
         let confirmed = inquire::Confirm::new(
             "A pack already exists in this directory, are you sure you wish to overwrite it with a new one?",
         )
-        .with_placeholder("yes/no")
+        .with_placeholder("yeo")
         .prompt()
         .unwrap_or(false);
 
@@ -200,6 +243,7 @@ fn setup_pack(
             loader_version,
             allowed_foreign_loaders, // None by default.
         },
+        settings: Settings::default(),
     };
     pack.write()?;
     Pack::setup_directories()?;

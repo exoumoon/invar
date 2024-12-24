@@ -96,6 +96,21 @@ where
     Ok(iterator)
 }
 
+/// Synchronize cached writes to persistent storage.
+///
+/// # Errors
+///
+/// This function will return an error if the `sync` command fails.
+pub fn try_sync() -> Result<()> {
+    match std::process::Command::new("sync").status() {
+        Ok(_) => Ok(()),
+        Err(source) => Err(Error::Io {
+            source,
+            faulty_path: None,
+        }),
+    }
+}
+
 // NOTE: A shorthand for `expanding` a path and logging an error if one arises
 // in the process.
 fn find_and_expand(path: &Path) -> Result<PathBuf> {

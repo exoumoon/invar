@@ -1,6 +1,7 @@
 use crate::index::{self, Index};
 use crate::instance::Instance;
 use crate::local_storage::{self, PersistedEntity};
+use crate::server::backup::BACKUP_FOLDER;
 use color_eyre::owo_colors::OwoColorize;
 use semver::Version;
 use serde::{Deserialize, Serialize};
@@ -9,6 +10,9 @@ use std::io::{self, Write};
 use std::path::PathBuf;
 use zip::write::SimpleFileOptions;
 use zip::ZipWriter;
+
+mod settings;
+pub use settings::*;
 
 /// The top-level "modpack" entity.
 ///
@@ -23,6 +27,8 @@ pub struct Pack {
 
     /// The Minecraft [`Instance`] used in this modpack.
     pub instance: Instance,
+
+    pub settings: Settings,
 }
 
 impl PersistedEntity for Pack {
@@ -61,6 +67,9 @@ impl Pack {
             fs::create_dir_all(subdir)?;
             let _ = File::create(format!("{subdir}/.gitkeep"))?;
         }
+
+        fs::create_dir_all(BACKUP_FOLDER)?;
+        fs::write(format!("{BACKUP_FOLDER}/.gitignore"), "*\n")?;
 
         Ok(())
     }

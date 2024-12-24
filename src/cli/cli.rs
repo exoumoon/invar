@@ -16,6 +16,9 @@ const STYLES: Styles = Styles::styled()
 pub struct Options {
     #[command(subcommand)]
     pub subcommand: Subcommand,
+
+    #[arg(short('f'), long("format"), default_value_t = OutputFormat::default())]
+    pub output_format: OutputFormat,
 }
 
 #[derive(clap::Subcommand, Debug)]
@@ -132,4 +135,15 @@ pub enum BackupAction {
 
     /// Create a new backup at this point in time.
     Create,
+
+    /// Garbage-collect backups.
+    Gc,
+}
+
+#[derive(Debug, Default, Clone, PartialEq, Eq, clap::ValueEnum, strum::Display)]
+#[strum(serialize_all = "kebab-case")]
+pub enum OutputFormat {
+    #[default]
+    Human,
+    Yaml,
 }

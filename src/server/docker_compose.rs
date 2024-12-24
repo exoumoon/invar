@@ -3,6 +3,7 @@ use crate::instance::Instance;
 use crate::local_storage;
 use crate::local_storage::PersistedEntity;
 use crate::pack::Pack;
+use crate::server::backup;
 use bon::bon;
 use docker_compose_types::{AdvancedVolumes, Compose, Environment, Service, SingleValue, Volumes};
 use serde::{Deserialize, Serialize};
@@ -10,7 +11,8 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::{fs, io};
 
-const DEFAULT_ICON_URL: &str =
+pub const DATA_VOLUME_PATH: &str = "server";
+pub const DEFAULT_ICON_URL: &str =
     "https://raw.githubusercontent.com/exoumoon/ground-zero/main/assets/icon.png";
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
@@ -97,6 +99,8 @@ pub enum StartStopError {
     ExitCode(#[from] io::Error),
     #[error("Process terminated by signal")]
     Terminated,
+    #[error("Failed to backup server")]
+    BackupError(#[from] backup::Error),
 }
 
 impl Server for DockerCompose {
@@ -106,14 +110,13 @@ impl Server for DockerCompose {
     fn setup() -> Result<Self, Self::SetupError> {
         let pack = Pack::read()?;
 
-        let data_volume_path = "./server";
-        if let Err(error) = fs::create_dir_all(data_volume_path) {
+        if let Err(error) = fs::create_dir_all(DATA_VOLUME_PATH) {
             match error.kind() {
                 io::ErrorKind::AlreadyExists => {}
                 _ => {
                     return Err(local_storage::Error::Io {
                         source: error,
-                        faulty_path: Some(PathBuf::from(data_volume_path)),
+                        faulty_path: Some(PathBuf::from(DATA_VOLUME_PATH)),
                     }
                     .into())
                 }
@@ -123,7 +126,7 @@ impl Server for DockerCompose {
         let volumes = vec![
             // Minecraft's data (all kinds of state).
             Volumes::Advanced(AdvancedVolumes {
-                source: Some(data_volume_path.into()),
+                source: Some(DATA_VOLUME_PATH.into()),
                 target: "/data".into(),
                 _type: "bind".into(),
                 read_only: false,
@@ -200,7 +203,7 @@ impl Server for DockerCompose {
             Err(error) => {
                 return Err(local_storage::Error::Io {
                     source: error,
-                    faulty_path: Some(PathBuf::from(data_volume_path)),
+                    faulty_path: Some(PathBuf::from(DATA_VOLUME_PATH)),
                 }
                 .into())
             }
@@ -213,6 +216,8 @@ impl Server for DockerCompose {
     }
 
     fn start(&self) -> Result<(), Self::StartStopError> {
+        let _new_backup = backup::create_new(Some("pre-start"))?;
+        let _gc_result = backup::gc()?;
         let status = std::process::Command::new("docker")
             .args([
                 "compose",
@@ -233,6 +238,8 @@ impl Server for DockerCompose {
     }
 
     fn stop(&self) -> Result<(), Self::StartStopError> {
+        let _new_backup = backup::create_new(Some("post-stop"))?;
+        let _gc_result = backup::gc()?;
         let status = std::process::Command::new("docker")
             .args([
                 "compose",

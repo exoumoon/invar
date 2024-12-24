@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
+pub mod backup;
 pub mod docker_compose;
 
 pub const DEFAULT_MINECRAFT_PORT: u16 = 25565;
