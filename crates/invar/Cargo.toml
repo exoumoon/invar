@@ -1,0 +1,32 @@
+[package]
+name = "invar"
+description = "CLI management tool for modded Minecraft servers"
+version = "0.6.0"
+edition = "2021"
+authors = ["mxxntype <59417007+mxxntype@users.noreply.github.com>"]
+homepage = "https://github.com/exoumoon/invar"
+license-file = "LICENSE"
+
+[dependencies]
+clap = { version = "4.5.17", features = ["derive", "color"] }
+clap_complete = "4.5.42"
+clap_complete_nushell = "4.5.5"
+color-eyre = "0.6.3"
+eyre = "0.6.12"
+heck = "0.5.0"
+inquire = "0.7.5"
+invar-component = { version = "0.1.0", path = "../invar-component" }
+invar-pack = { version = "0.6.0", path = "../invar-pack" }
+invar-repository = { version = "0.1.0", path = "../invar-repository" }
+invar-server = { version = "0.1.0", path = "../invar-server" }
+semver = { version = "1.0.23", features = ["serde"] }
+serde = { version = "1.0.210", features = ["derive"] }
+serde_yml = "0.0.12"
+strum = { version = "0.26.3", features = ["derive"] }
+tracing = "0.1.41"
+tracing-error = "0.2.1"
+tracing-subscriber = { version = "0.3.19", features = ["fmt", "env-filter"] }
+url = { version = "2.5.2", features = ["serde"] }
+
+[lints]
+workspace = true

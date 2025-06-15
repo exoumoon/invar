@@ -29,7 +29,3 @@
 [^1]: By "declaratively", I mean having everything built from plaintext metadata (like in [`packwiz`](https://packwiz.infra.link)) and being tightly integrated with the Git VCS. One of the design concepts of this tool is to treat modpacks and servers as software source code and deployments, respectively.
 [^2]: There still may or may not be a need for a datapack loader mod. I'll update this when I get to implementing server-side and client-side datapack handling.
 [^3]: It's unliky I will be hand-rolling some sophisticated backup system. This will probably be an equivalent of an automated `cp -r ./server .backups/` before you start the server and after it shuts down.
-
-### Architecture
-
-<img src="https://raw.githubusercontent.com/exoumoon/invar/refs/heads/main/assets/architecture.drawio.svg" width="100%">

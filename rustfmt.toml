@@ -3,7 +3,7 @@
 # entire project, one can just use `cargo +nightly fmt`. Personally,
 # I have configured my editor to always use nightly rustfmt.
 
-group_imports = "One"
+group_imports = "StdExternalCrate"
 imports_granularity = "Module"
 
 wrap_comments = true

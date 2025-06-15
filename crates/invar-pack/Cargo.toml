@@ -1,0 +1,23 @@
+[package]
+name = "invar-pack"
+version = "0.6.0"
+edition = "2021"
+authors = ["mxxntype <59417007+mxxntype@users.noreply.github.com>"]
+homepage = "https://github.com/exoumoon/invar"
+license-file = "../../LICENSE"
+
+[dependencies]
+clap = { version = "4.5.26", features = ["derive"] }
+invar-component = { version = "0.1.0", path = "../invar-component" }
+semver = { version = "1.0.24", features = ["serde"] }
+serde = { version = "1.0.217", features = ["derive"] }
+strum = { version = "0.26.3", features = ["derive"] }
+thiserror = "2.0.11"
+url = { version = "2.5.4", features = ["serde"] }
+
+[dev-dependencies]
+rstest = "0.24.0"
+color-eyre = "0.6.3"
+
+[lints]
+workspace = true
