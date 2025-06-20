@@ -130,7 +130,7 @@ impl Server for DockerCompose {
                 source: Some({
                     let _ = local_repo
                         .pack
-                        .export(local_repo.list_components().unwrap().as_slice());
+                        .export(local_repo.list_components().unwrap());
                     format!("./{}.mrpack", local_repo.pack.name)
                 }),
                 target: Self::MODPACK_PATH.into(),

@@ -22,11 +22,10 @@ use serde_with::serde_as;
 use strum::Display;
 use url::Url;
 
-mod tag;
-pub use tag::*;
-
 mod runtime;
+mod tag;
 pub use runtime::*;
+pub use tag::*;
 
 /// An identifier of a [`Component`].
 #[nutype(
@@ -66,6 +65,11 @@ pub enum Source {
 }
 
 impl Source {
+    /// Returns the file name of this [`Source`].
+    ///
+    /// # Panics
+    ///
+    /// Panics if the local component's path terminates with `..`.
     #[must_use]
     pub fn file_name(&self) -> PathBuf {
         match self {

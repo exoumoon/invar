@@ -20,7 +20,7 @@ use invar_pack::instance::{Instance, Loader};
 use invar_pack::settings::Settings;
 use invar_pack::Pack;
 use invar_repository::persist::{PersistError, PersistedEntity};
-use invar_repository::{models, LocalRepository, ModrinthRepository};
+use invar_repository::{LocalRepository, ModrinthRepository};
 use invar_server::docker_compose::DockerCompose;
 use invar_server::{backup, Server};
 use semver::Version;
@@ -81,7 +81,7 @@ fn run_with_options(options: Options) -> Result<(), Report> {
             }
             PackAction::Export => {
                 let components = local_repository.list_components()?;
-                local_repository.pack.export(&components)?;
+                local_repository.pack.export(components)?;
                 Ok(())
             }
             PackAction::Setup {
@@ -141,17 +141,25 @@ fn run_with_options(options: Options) -> Result<(), Report> {
                     let source = if local {
                         Source::Local(LocalComponent { path })
                     } else {
-                        let latest_version: models::Version = modrinth_repository
+                        let versions = modrinth_repository
                             .fetch_versions(id)?
                             .into_iter()
-                            .next()
-                            .unwrap();
-                        let first_file = latest_version.files.into_iter().next().unwrap();
+                            .filter(|version| {
+                                let mc_version = &local_repository.pack.instance.minecraft_version;
+                                version.game_versions.contains(&mc_version.to_string())
+                            })
+                            .collect();
+
+                        let selected_version =
+                            inquire::Select::new("Which version should be added?", versions)
+                                .prompt()?;
+
+                        let first_file = selected_version.files.into_iter().next().unwrap();
                         Source::Remote(RemoteComponent {
                             download_url: first_file.url,
                             file_name: PathBuf::from(first_file.name),
                             file_size: first_file.size,
-                            version_id: latest_version.id,
+                            version_id: selected_version.id,
                             hashes: first_file.hashes,
                         })
                     };

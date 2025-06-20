@@ -1,4 +1,4 @@
-#![feature(never_type)]
+#![expect(clippy::missing_errors_doc)]
 
 use std::fs::File;
 use std::io::Write;
@@ -27,21 +27,26 @@ pub struct Pack {
 }
 
 impl Pack {
+    pub const INDEX_FILE_NAME: &'static str = "modrinth.index.json";
+
     #[must_use]
     pub fn modpack_filename(&self) -> PathBuf {
         format!("{}.mrpack", self.name).into()
     }
 
-    pub fn export(&self, components: &[Component]) -> Result<(), !> {
+    pub fn export<I>(&self, components: I) -> Result<(), ExportError>
+    where
+        I: IntoIterator<Item = Component>,
+    {
         let files = components
-            .iter()
-            .filter_map(|component| match &component.source {
-                Source::Remote(source) => {
+            .into_iter()
+            .filter_map(|component| match component.source {
+                Source::Remote(ref source) => {
                     let file = index::File::from_remote()
-                        .remote_component(source.clone())
                         .runtime_path(component.runtime_path().into())
+                        .env(component.environment)
                         .hashes(source.hashes.clone())
-                        .env(component.environment.clone())
+                        .remote_component(source.clone())
                         .build();
                     Some(file)
                 }
@@ -51,16 +56,25 @@ impl Pack {
             .collect::<Vec<_>>();
 
         let index = index::Index::from_pack_and_files(self, files.as_slice());
-        let json = serde_json::to_string(&index).unwrap();
+        let json = serde_json::to_string(&index)?;
 
-        let file = File::create(self.modpack_filename()).unwrap();
+        let file = File::create(self.modpack_filename())?;
+        let options = SimpleFileOptions::default();
         let mut mrpack = ZipWriter::new(file);
-        let options =
-            SimpleFileOptions::default().compression_method(zip::CompressionMethod::Deflated);
-        mrpack.start_file("modrinth.index.json", options).unwrap();
-        mrpack.write_all(json.as_bytes()).unwrap();
-        mrpack.finish().unwrap();
+        mrpack.start_file(Self::INDEX_FILE_NAME, options)?;
+        mrpack.write_all(json.as_bytes())?;
+        mrpack.finish()?;
 
         Ok(())
     }
+}
+
+#[derive(thiserror::Error, Debug)]
+pub enum ExportError {
+    #[error("Failed to serialize the index to JSON")]
+    Serde(#[from] serde_json::Error),
+    #[error("Failed to construct the .mrpack (zip archive)")]
+    Zip(#[from] zip::result::ZipError),
+    #[error("Failed to create the .mrpack file")]
+    Io(#[from] std::io::Error),
 }
