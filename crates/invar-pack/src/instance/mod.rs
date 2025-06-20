@@ -65,6 +65,13 @@ impl Instance {
     }
 
     #[must_use]
+    pub fn allowed_loaders(&self) -> HashSet<Loader> {
+        let mut loaders = self.allowed_foreign_loaders.clone();
+        loaders.insert(self.loader);
+        loaders
+    }
+
+    #[must_use]
     pub fn index_dependencies(&self) -> HashMap<Loader, String> {
         HashMap::from_iter([
             (self.loader, self.loader_version.to_string()),

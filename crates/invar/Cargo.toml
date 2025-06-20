@@ -19,6 +19,7 @@ invar-component = { version = "0.1.0", path = "../invar-component" }
 invar-pack = { version = "0.6.0", path = "../invar-pack" }
 invar-repository = { version = "0.1.0", path = "../invar-repository" }
 invar-server = { version = "0.1.0", path = "../invar-server" }
+itertools.workspace = true
 semver = { version = "1.0.23", features = ["serde"] }
 serde = { version = "1.0.210", features = ["derive"] }
 serde_yml = "0.0.12"

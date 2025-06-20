@@ -15,12 +15,9 @@ impl Default for ModrinthRepository {
 
 impl ModrinthRepository {
     pub const USER_AGENT: &str = concat!(
-        env!("CARGO_PKG_HOMEPAGE"),
-        "/",
+        "https://github.com/exoumoon/invar/",
         env!("CARGO_PKG_VERSION"),
-        " (",
-        env!("CARGO_PKG_AUTHORS"),
-        ")",
+        " (mxxntype)"
     );
 
     pub fn new() -> Self {

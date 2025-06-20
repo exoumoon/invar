@@ -1232,6 +1232,7 @@ dependencies = [
  "invar-pack",
  "invar-repository",
  "invar-server",
+ "itertools",
  "semver",
  "serde",
  "serde_yml",

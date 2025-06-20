@@ -23,6 +23,7 @@ use invar_repository::persist::{PersistError, PersistedEntity};
 use invar_repository::{LocalRepository, ModrinthRepository};
 use invar_server::docker_compose::DockerCompose;
 use invar_server::{backup, Server};
+use itertools::Itertools;
 use semver::Version;
 use strum::IntoEnumIterator;
 use tracing::{instrument, Level};
@@ -146,13 +147,29 @@ fn run_with_options(options: Options) -> Result<(), Report> {
                             .into_iter()
                             .filter(|version| {
                                 let mc_version = &local_repository.pack.instance.minecraft_version;
-                                version.game_versions.contains(&mc_version.to_string())
+                                let version_loaders: HashSet<Loader> =
+                                    version.loaders.iter().copied().collect();
+                                let has_supported_loader = local_repository
+                                    .pack
+                                    .instance
+                                    .allowed_loaders()
+                                    .intersection(&version_loaders)
+                                    .count()
+                                    > 1;
+                                let is_for_correct_version =
+                                    version.game_versions.contains(&mc_version.to_string());
+                                is_for_correct_version && has_supported_loader
                             })
-                            .collect();
+                            .sorted_unstable_by_key(|version| version.date_published)
+                            .rev()
+                            .collect::<Vec<_>>();
 
-                        let selected_version =
-                            inquire::Select::new("Which version should be added?", versions)
-                                .prompt()?;
+                        let help_msg = "Only ones with a matching MC version and loader are listed";
+                        let prompt =
+                            format!("Which version of {} should be added?", id.underline());
+                        let selected_version = inquire::Select::new(&prompt, versions)
+                            .with_help_message(help_msg)
+                            .prompt()?;
 
                         let first_file = selected_version.files.into_iter().next().unwrap();
                         Source::Remote(RemoteComponent {
