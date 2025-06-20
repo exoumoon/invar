@@ -25,6 +25,9 @@ use url::Url;
 mod tag;
 pub use tag::*;
 
+mod runtime;
+pub use runtime::*;
+
 /// An identifier of a [`Component`].
 #[nutype(
     sanitize(trim, lowercase),
@@ -60,6 +63,16 @@ pub struct Component {
 pub enum Source {
     Remote(RemoteComponent),
     Local(LocalComponent),
+}
+
+impl Source {
+    #[must_use]
+    pub fn file_name(&self) -> PathBuf {
+        match self {
+            Self::Remote(remote_component) => remote_component.file_name.clone(),
+            Self::Local(local_component) => local_component.path.file_name().unwrap().into(),
+        }
+    }
 }
 
 /// A **remote** modpack component.

@@ -162,6 +162,22 @@ impl LocalRepository {
         fs::write(target_path, yaml_repr).unwrap();
     }
 
+    pub fn remove_component<S>(&self, id: S) -> Result<(), self::Error>
+    where
+        S: AsRef<str>,
+    {
+        for component in self
+            .list_components()?
+            .into_iter()
+            .filter(|c| c.id == id.as_ref().into())
+        {
+            let path_to_remove = self.component_path(&component);
+            std::fs::remove_file(path_to_remove)?;
+        }
+
+        Ok(())
+    }
+
     /// Create the data subdirectories in the current directory.
     ///
     /// # Errors

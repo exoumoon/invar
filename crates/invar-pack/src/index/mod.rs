@@ -1,7 +1,8 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
 
-use invar_component::{Env, Hashes};
+use bon::bon;
+use invar_component::{Env, Hashes, RemoteComponent};
 use overrides::Overrides;
 use semver::Version;
 use serde::{Deserialize, Serialize};
@@ -60,4 +61,23 @@ pub struct File {
     pub env: Env,
     pub downloads: Vec<Url>,
     pub file_size: usize,
+}
+
+#[bon]
+impl File {
+    #[builder(finish_fn = build)]
+    pub fn from_remote(
+        runtime_path: PathBuf,
+        hashes: Hashes,
+        env: Env,
+        remote_component: RemoteComponent,
+    ) -> Self {
+        Self {
+            path: runtime_path,
+            hashes,
+            env,
+            downloads: vec![remote_component.download_url],
+            file_size: remote_component.file_size,
+        }
+    }
 }

@@ -7,13 +7,16 @@ homepage = "https://github.com/exoumoon/invar"
 license-file = "../../LICENSE"
 
 [dependencies]
+bon.workspace = true
 clap = { version = "4.5.26", features = ["derive"] }
 invar-component = { version = "0.1.0", path = "../invar-component" }
 semver = { version = "1.0.24", features = ["serde"] }
 serde = { version = "1.0.217", features = ["derive"] }
+serde_json.workspace = true
 strum = { version = "0.26.3", features = ["derive"] }
 thiserror = "2.0.11"
 url = { version = "2.5.4", features = ["serde"] }
+zip.workspace = true
 
 [dev-dependencies]
 rstest = "0.24.0"

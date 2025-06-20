@@ -3,8 +3,8 @@ use std::{fs, io};
 
 use bon::bon;
 use docker_compose_types::{AdvancedVolumes, Compose, Environment, Service, SingleValue, Volumes};
-use invar_pack::Pack;
 use invar_pack::instance::Instance;
+use invar_repository::LocalRepository;
 use invar_repository::persist::PersistedEntity;
 use serde::{Deserialize, Serialize};
 
@@ -104,7 +104,7 @@ impl Server for DockerCompose {
 
     #[expect(clippy::match_wild_err_arm)]
     fn setup() -> Result<Self, Self::SetupError> {
-        let pack: Pack = Pack::read().unwrap();
+        let local_repo = LocalRepository::open_at_git_root().unwrap();
         if let Err(error) = fs::create_dir_all(DATA_VOLUME_PATH) {
             match error.kind() {
                 io::ErrorKind::AlreadyExists => {}
@@ -128,8 +128,10 @@ impl Server for DockerCompose {
             // A "symlink" to our exported modpack.
             Volumes::Advanced(AdvancedVolumes {
                 source: Some({
-                    let _ = pack.export();
-                    format!("./{}.mrpack", pack.name)
+                    let _ = local_repo
+                        .pack
+                        .export(local_repo.list_components().unwrap().as_slice());
+                    format!("./{}.mrpack", local_repo.pack.name)
                 }),
                 target: Self::MODPACK_PATH.into(),
                 _type: "bind".into(),
@@ -144,10 +146,10 @@ impl Server for DockerCompose {
             "{DEFAULT_MINECRAFT_PORT}:{DEFAULT_MINECRAFT_PORT}"
         )]);
 
-        let hostname = format!("{}_server", pack.name);
+        let hostname = format!("{}_server", local_repo.pack.name);
         let image = "itzg/minecraft-server:java17-alpine".to_string();
         let environment = Self::environment()
-            .instance(&pack.instance)
+            .instance(&local_repo.pack.instance)
             .operator_username("mxxntype")
             .memlimit_gb(12)
             .max_players(4)
@@ -203,7 +205,7 @@ impl Server for DockerCompose {
         }
 
         let docker_compose = Self(manifest);
-        // docker_compose.write()?;
+        docker_compose.write().unwrap();
         Ok(docker_compose)
     }
 

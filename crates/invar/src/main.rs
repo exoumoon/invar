@@ -79,7 +79,11 @@ fn run_with_options(options: Options) -> Result<(), Report> {
                 println!("{}", serde_yml::to_string(&local_repository.pack)?);
                 Ok(())
             }
-            PackAction::Export => Ok(local_repository.pack.export()?),
+            PackAction::Export => {
+                let components = local_repository.list_components()?;
+                local_repository.pack.export(&components)?;
+                Ok(())
+            }
             PackAction::Setup {
                 name,
                 minecraft_version,
@@ -167,7 +171,16 @@ fn run_with_options(options: Options) -> Result<(), Report> {
                 }
                 Ok(())
             }
-            ComponentAction::Remove { .. } => todo!(),
+
+            ComponentAction::Remove { ids } => {
+                for id in ids {
+                    local_repository
+                        .remove_component(id)
+                        .wrap_err("Failed to remove component")?;
+                }
+                Ok(())
+            }
+
             ComponentAction::Update { .. } => {
                 let error = eyre::eyre!("Updating components isn't yet implemented")
                     .with_note(|| "This will be implemented in a future version of Invar.")

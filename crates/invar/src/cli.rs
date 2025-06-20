@@ -107,7 +107,7 @@ pub enum ComponentAction {
     /// Update one or more of the existing components.
     Update {
         /// The IDs of components to update (update all if not provided).
-        slugs: Vec<String>,
+        ids: Vec<String>,
     },
 
     /// Remove one or more of the existing components.
@@ -115,7 +115,7 @@ pub enum ComponentAction {
     #[command(arg_required_else_help = true)]
     Remove {
         /// The IDs of components to remove.
-        slugs: Vec<String>,
+        ids: Vec<String>,
     },
 }
 
