@@ -101,32 +101,6 @@ impl LocalRepository {
             components.push(component);
         }
 
-        // else {
-        //     let path = entry.path().to_path_buf();
-        //     let local_component = LocalComponent { path };
-        //     let source = Source::Local(local_component);
-        //     let id = Id::from(
-        //         entry
-        //             .path()
-        //             .file_stem()
-        //             .ok_or(Error::EmptyFilename)?
-        //             .to_string_lossy()
-        //             .to_string(),
-        //     );
-
-        //     let component = Component {
-        //         id,
-        //         category: Category::Mod,
-        //         tags: TagInformation::none(),
-        //         environment: Env {
-        //             client: Requirement::Required,
-        //             server: Requirement::Required,
-        //         },
-        //         source,
-        //     };
-        //     components.push(component);
-        // }
-
         Ok(components)
     }
 
