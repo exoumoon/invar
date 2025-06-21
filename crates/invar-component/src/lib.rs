@@ -167,10 +167,11 @@ pub enum Category {
 #[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Hash, Debug)]
 #[serde(rename_all = "camelCase")]
 pub enum Requirement {
-    Required,
-    Optional,
     #[serde(alias = "incompatible")]
     Unsupported,
+    Optional,
+    #[serde(other)]
+    Required,
 }
 
 /// Client- and server-side requirements for a [`Component`].
