@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use crate::{Category, Component};
 
-#[derive(strum::Display, Clone, Copy, PartialEq, Eq, Debug)]
+#[derive(strum::Display, strum::EnumIter, Clone, Copy, PartialEq, Eq, Debug)]
 #[strum(serialize_all = "lowercase")]
 #[must_use]
 pub enum RuntimeDirectory {

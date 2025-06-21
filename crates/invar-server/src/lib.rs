@@ -3,6 +3,7 @@
 
 use std::fmt;
 
+use invar_pack::Pack;
 use serde::{Deserialize, Serialize};
 
 pub mod backup;
@@ -26,7 +27,7 @@ pub trait Server: fmt::Debug + Serialize + for<'de> Deserialize<'de> {
     /// # Errors
     ///
     /// ...
-    fn start(&self) -> Result<(), Self::StartStopError>;
+    fn start(&self, pack: &Pack) -> Result<(), Self::StartStopError>;
 
     /// Stop the hosted server, do nothing if it is already stopped.
     ///

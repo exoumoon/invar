@@ -4,7 +4,7 @@ use std::fs::File;
 use std::io::Write;
 use std::path::PathBuf;
 
-use invar_component::{Component, Source};
+use invar_component::{Component, LocalComponentEntry, Source};
 use semver::Version;
 use serde::{Deserialize, Serialize};
 use settings::Settings;
@@ -18,12 +18,15 @@ pub mod instance;
 pub mod settings;
 
 /// The top-level **"modpack" entity**.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, Clone, Debug)]
 pub struct Pack {
     pub name: String,
     pub version: Version,
     pub instance: Instance,
     pub settings: Settings,
+
+    #[serde(default)]
+    pub local_components: Vec<LocalComponentEntry>,
 }
 
 impl Pack {

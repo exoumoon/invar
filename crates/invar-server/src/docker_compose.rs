@@ -3,7 +3,9 @@ use std::{fs, io};
 
 use bon::bon;
 use docker_compose_types::{AdvancedVolumes, Compose, Environment, Service, SingleValue, Volumes};
+use invar_pack::Pack;
 use invar_pack::instance::Instance;
+use invar_pack::settings::BackupMode;
 use invar_repository::LocalRepository;
 use invar_repository::persist::PersistedEntity;
 use serde::{Deserialize, Serialize};
@@ -128,9 +130,7 @@ impl Server for DockerCompose {
             // A "symlink" to our exported modpack.
             Volumes::Advanced(AdvancedVolumes {
                 source: Some({
-                    let _ = local_repo
-                        .pack
-                        .export(local_repo.list_components().unwrap());
+                    let _ = local_repo.pack.export(local_repo.components().unwrap());
                     format!("./{}.mrpack", local_repo.pack.name)
                 }),
                 target: Self::MODPACK_PATH.into(),
@@ -147,7 +147,7 @@ impl Server for DockerCompose {
         )]);
 
         let hostname = format!("{}_server", local_repo.pack.name);
-        let image = "itzg/minecraft-server:java17-alpine".to_string();
+        let image = "itzg/minecraft-server:java17".to_string();
         let environment = Self::environment()
             .instance(&local_repo.pack.instance)
             .operator_username("mxxntype")
@@ -209,9 +209,11 @@ impl Server for DockerCompose {
         Ok(docker_compose)
     }
 
-    fn start(&self) -> Result<(), Self::StartStopError> {
-        let _new_backup = backup::create_new(Some("pre-start"))?;
-        let _gc_result = backup::gc()?;
+    fn start(&self, pack: &Pack) -> Result<(), Self::StartStopError> {
+        if matches!(pack.settings.backup_mode, BackupMode::StartStop { .. }) {
+            let _new_backup = backup::create_new(Some("pre-start"))?;
+            let _gc_result = backup::gc()?;
+        }
         let status = std::process::Command::new("docker")
             .args([
                 "compose",

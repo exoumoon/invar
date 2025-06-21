@@ -69,9 +69,9 @@
 
 use serde::Serialize;
 
-pub const COMMON_OVERRIDES_FOLDER: &str = "overrides";
-pub const SERVER_OVERRIDES_FOLDER: &str = "server-overrides";
-pub const CLIENT_OVERRIDES_FOLDER: &str = "client-overrides";
+pub const COMMON_OVERRIDES_DIR: &str = "overrides";
+pub const SERVER_OVERRIDES_DIR: &str = "server-overrides";
+pub const CLIENT_OVERRIDES_DIR: &str = "client-overrides";
 
 #[derive(Debug, Default, Clone, Serialize)]
 pub struct Overrides {}

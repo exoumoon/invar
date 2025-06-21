@@ -8,7 +8,7 @@ clap = { version = "4.5.26", features = ["derive"] }
 nutype = { version = "0.5.1", features = ["serde"] }
 serde = { version = "1.0.217", features = ["derive"] }
 serde_with = { version = "3.12.0", features = ["hex"] }
-strum = { version = "0.26.3", features = ["derive"] }
+strum.workspace = true
 url = { version = "2.5.4", features = ["serde"] }
 
 [lints]

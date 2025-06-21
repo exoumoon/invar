@@ -17,7 +17,7 @@ invar-pack = { version = "0.6.0", path = "../invar-pack" }
 invar-repository = { version = "0.1.0", path = "../invar-repository" }
 itertools = "0.14.0"
 serde = { version = "1.0.217", features = ["derive"] }
-strum = { version = "0.26.3", features = ["derive"] }
+strum.workspace = true
 thiserror = "2.0.11"
 tracing = "0.1.41"
 

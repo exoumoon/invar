@@ -13,7 +13,7 @@ invar-component = { version = "0.1.0", path = "../invar-component" }
 semver = { version = "1.0.24", features = ["serde"] }
 serde = { version = "1.0.217", features = ["derive"] }
 serde_json.workspace = true
-strum = { version = "0.26.3", features = ["derive"] }
+strum.workspace = true
 thiserror = "2.0.11"
 url = { version = "2.5.4", features = ["serde"] }
 zip.workspace = true

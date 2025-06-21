@@ -35,4 +35,5 @@ match_bool = { level = "allow", priority = 1 }
 bon = "3.6.0"
 itertools = "0.14.0"
 serde_json = "1.0.140"
+strum = { version = "0.27.1", features = ["derive"] }
 zip = "4.1.0"

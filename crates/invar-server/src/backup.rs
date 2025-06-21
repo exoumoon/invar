@@ -31,35 +31,34 @@ pub struct Backup {
 ///
 /// See [`local_storage::Error`] for possible error causes.
 pub fn get_all_backups() -> Result<Vec<Backup>, std::io::Error> {
-    let backups = fs::read_dir(LocalRepository::BACKUP_FOLDER)?
+    let backups = fs::read_dir(LocalRepository::BACKUP_DIRECTORY)?
         .collect::<Result<Vec<_>, _>>()?
         .into_iter()
-        .filter(|folder| {
-            folder
+        .filter(|directory| {
+            directory
                 .metadata()
-                .ok()
-                .map(|md| md.is_dir())
-                .is_some_and(|id_dir| id_dir)
+                .map(|metadata| metadata.is_dir())
+                .is_ok_and(|is_dir| is_dir)
         })
-        .map(|folder| -> Result<_, std::io::Error> {
-            let seq_number = folder
+        .map(|directory| -> Result<_, std::io::Error> {
+            let seq_number = directory
                 .path()
                 .file_name()
-                .and_then(|folder_name| {
-                    folder_name
+                .and_then(|directory_name| {
+                    directory_name
                         .to_string_lossy()
-                        .split(LocalRepository::BACKUP_FOLDER_SEP)
+                        .split(LocalRepository::BACKUP_DIRECTORY_SEP)
                         .next()
                         .and_then(|marker| marker.parse::<usize>().ok())
                 })
                 .unwrap_or(usize::MAX);
-            let created_at = folder
+            let created_at = directory
                 .path()
                 .file_name()
-                .and_then(|folder_name| {
-                    folder_name
+                .and_then(|directory_name| {
+                    directory_name
                         .to_string_lossy()
-                        .split(LocalRepository::BACKUP_FOLDER_SEP)
+                        .split(LocalRepository::BACKUP_DIRECTORY_SEP)
                         .next_back()
                         .and_then(|marker| marker.parse::<DateTime<Local>>().ok())
                 })
@@ -67,12 +66,12 @@ pub fn get_all_backups() -> Result<Vec<Backup>, std::io::Error> {
             Ok(Backup {
                 seq_number,
                 created_at,
-                path: folder.path().canonicalize()?,
+                path: directory.path().canonicalize()?,
             })
         })
         .collect::<Result<Vec<_>, _>>()?
         .into_iter()
-        .sorted_unstable_by_key(|folder| folder.seq_number)
+        .sorted_unstable_by_key(|directory| directory.seq_number)
         .rev()
         .collect_vec();
     Ok(backups)
@@ -96,8 +95,8 @@ pub fn create_new(tag: Option<&str>) -> Result<Backup, self::Error> {
 
     let created_at = Local::now();
     let target_dir = format!(
-        "{folder}/{seq_number}_{pack_name}{tag}_{created_at}",
-        folder = LocalRepository::BACKUP_FOLDER,
+        "{directory}/{seq_number}_{pack_name}{tag}_{created_at}",
+        directory = LocalRepository::BACKUP_DIRECTORY,
         tag = tag.map(|tag| format!("({tag})")).unwrap_or_default(),
     );
 

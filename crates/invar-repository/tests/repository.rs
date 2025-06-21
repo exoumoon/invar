@@ -35,6 +35,7 @@ fn inputs() -> Inputs {
             version: Version::parse("0.1.0")?,
             instance,
             settings: Settings::default(),
+            local_components: vec![],
         };
 
         let dir = TempDir::new(TEMPDIR_PREFIX)?;

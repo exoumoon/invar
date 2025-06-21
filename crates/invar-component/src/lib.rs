@@ -55,6 +55,18 @@ pub struct Component {
     pub source: Source,
 }
 
+impl Component {
+    #[must_use]
+    pub const fn is_remote(&self) -> bool {
+        matches!(self.source, Source::Remote(_))
+    }
+
+    #[must_use]
+    pub const fn is_local(&self) -> bool {
+        matches!(self.source, Source::Local(_))
+    }
+}
+
 /// Possible sources where a [`Component`] might come from.
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[must_use]
@@ -103,20 +115,40 @@ pub struct RemoteComponent {
 /// non-metadata file in the modpack's repository, and should be simply copied
 /// as is to the resulting modpack".
 ///
-/// Its primary goal is to allow you to manage mods from private discord servers
-/// (you know those I'm talking about), and **configuration files**. Each file
-/// in the repository that Invar does not recognize as a _metadata file_ will be
-/// treated as local components.
-///
 /// To add a file (be it a mod, config file or whatnot), just place that file
-/// into its relevant folder. Invar recognizes all non-metadata files as local
-/// components. Run `invar component list` to make sure your file is tracked as
-/// expected.
+/// into its relevant folder, and run `invar component import-local`. Invar will
+/// recognize all non-metadata files as potential local components, and ask you
+/// if those should be tracked. You can also manually populate the internal list
+/// of local components, it is kept in `pack.yml`.
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[must_use]
 pub struct LocalComponent {
     /// Path to the non-metadata file that should be included as-is.
     pub path: PathBuf,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Eq, Clone, Debug)]
+#[must_use]
+pub struct LocalComponentEntry {
+    pub path: PathBuf,
+    pub category: Category,
+}
+
+impl LocalComponentEntry {
+    /// Returns the [`Id`] of this [`LocalComponentEntry`].
+    ///
+    /// # Panics
+    ///
+    /// Panics if the underlying path has no file stem.
+    #[must_use]
+    pub fn id(&self) -> Id {
+        self.path
+            .file_stem()
+            .unwrap()
+            .to_string_lossy()
+            .to_string()
+            .into()
+    }
 }
 
 /// Possible types (categories) of [`Component`]s.

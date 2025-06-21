@@ -19,7 +19,7 @@ pub enum VcsMode {
     Manual,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum BackupMode {
     /// Create a backup before starting the server and after stopping it.
@@ -30,14 +30,6 @@ pub enum BackupMode {
     StartStop { min_depth: usize },
 
     /// Do not create or delete backups automatically.
+    #[default]
     Manual,
-}
-
-impl Default for BackupMode {
-    fn default() -> Self {
-        Self::StartStop {
-            // Pre-start and post-stop backups for the last 2 launches.
-            min_depth: 4,
-        }
-    }
 }

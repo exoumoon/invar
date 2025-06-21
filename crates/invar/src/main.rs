@@ -71,7 +71,7 @@ fn main() -> Result<(), Report> {
 
 #[instrument(name = "action_handling")]
 fn run_with_options(options: Options) -> Result<(), Report> {
-    let local_repository = LazyCell::new(|| LocalRepository::open_at_git_root().unwrap());
+    let mut local_repository = LazyCell::new(|| LocalRepository::open_at_git_root().unwrap());
     let modrinth_repository = LazyCell::new(ModrinthRepository::new);
 
     match options.subcommand {
@@ -81,7 +81,7 @@ fn run_with_options(options: Options) -> Result<(), Report> {
                 Ok(())
             }
             PackAction::Export => {
-                let components = local_repository.list_components()?;
+                let components = local_repository.components()?;
                 local_repository.pack.export(components)?;
                 Ok(())
             }
@@ -96,40 +96,30 @@ fn run_with_options(options: Options) -> Result<(), Report> {
 
         Subcommand::Component { action } => match action {
             ComponentAction::List => {
-                for Component {
-                    id,
-                    category,
+                for ref component @ Component {
+                    ref id,
+                    ref category,
+                    ref environment,
+                    ref source,
                     tags: _,
-                    environment,
-                    source,
-                } in local_repository.list_components()?
+                } in local_repository.components()?
                 {
                     let source_str_repr = match source {
                         Source::Remote(_) => "Remote",
                         Source::Local(_) => "Local",
                     };
                     eprint!(
-                        "{id:>24} {}{source} {category}{} {environment} ",
+                        "{id:>24} {}{source:<6} {category}{} {environment} runtime_path: {runtime_path:?} ",
                         "[".white(),
                         "]".white(),
                         id = id.bold().green(),
                         source = source_str_repr.cyan(),
                         category = category.blue().bold(),
                         environment = format!("({environment})").purple().italic(),
+                        runtime_path = PathBuf::from(component.runtime_path()).display().red(),
                     );
-                    match source {
-                        Source::Remote(RemoteComponent {
-                            download_url: _,
-                            file_name,
-                            file_size: _,
-                            version_id,
-                            hashes: _,
-                        }) => {
-                            eprint!("{}, {version_id}", file_name.display().white());
-                        }
-                        Source::Local(LocalComponent { path }) => {
-                            eprint!("source_file: {}", path.display().white());
-                        }
+                    if let Source::Local(LocalComponent { path }) = source {
+                        eprint!("source_file: {}", path.display().white());
                     }
                     eprintln!(/* line termination */);
                 }
@@ -138,26 +128,25 @@ fn run_with_options(options: Options) -> Result<(), Report> {
 
             ComponentAction::Add { ids, local } => {
                 for id in &ids {
-                    let path = PathBuf::from(id);
                     let source = if local {
+                        let path = PathBuf::from(id);
                         Source::Local(LocalComponent { path })
                     } else {
-                        let versions = modrinth_repository
-                            .fetch_versions(id)?
+                        let fetched_versions = modrinth_repository.fetch_versions(id)?;
+                        let versions = fetched_versions
                             .into_iter()
                             .filter(|version| {
-                                let mc_version = &local_repository.pack.instance.minecraft_version;
+                                let instance = &local_repository.pack.instance;
+                                let is_for_correct_version = version
+                                    .game_versions
+                                    .contains(&instance.minecraft_version.to_string());
                                 let version_loaders: HashSet<Loader> =
                                     version.loaders.iter().copied().collect();
-                                let has_supported_loader = local_repository
-                                    .pack
-                                    .instance
+                                let has_supported_loader = instance
                                     .allowed_loaders()
                                     .intersection(&version_loaders)
                                     .count()
-                                    > 1;
-                                let is_for_correct_version =
-                                    version.game_versions.contains(&mc_version.to_string());
+                                    >= 1;
                                 is_for_correct_version && has_supported_loader
                             })
                             .sorted_unstable_by_key(|version| version.date_published)
@@ -169,7 +158,8 @@ fn run_with_options(options: Options) -> Result<(), Report> {
                             format!("Which version of {} should be added?", id.underline());
                         let selected_version = inquire::Select::new(&prompt, versions)
                             .with_help_message(help_msg)
-                            .prompt()?;
+                            .prompt()
+                            .wrap_err("Failed to prompt for a component version")?;
 
                         let first_file = selected_version.files.into_iter().next().unwrap();
                         Source::Remote(RemoteComponent {
@@ -219,7 +209,7 @@ fn run_with_options(options: Options) -> Result<(), Report> {
                 .map(|_| ())
                 .wrap_err("Failed to setup the server"),
             ServerAction::Start => DockerCompose::read()?
-                .start()
+                .start(&local_repository.pack)
                 .wrap_err("Failed to start the server"),
             ServerAction::Stop => DockerCompose::read()?
                 .stop()
@@ -293,7 +283,6 @@ fn backup_gc(options: &Options) -> Result<(), Report> {
     Ok(())
 }
 
-#[instrument(level = "debug", ret)]
 fn setup_pack(
     mut name: Option<String>,
     mut minecraft_version: Option<Version>,
@@ -365,6 +354,7 @@ fn setup_pack(
             allowed_foreign_loaders, // None by default.
         },
         settings: Settings::default(),
+        local_components: vec![],
     };
     pack.write()?;
     tracing::info!(pack_file = ?Pack::FILE_PATH, "Done");

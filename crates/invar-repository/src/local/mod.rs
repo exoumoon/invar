@@ -2,10 +2,12 @@ use std::path::{Path, PathBuf};
 use std::{fs, io};
 
 use invar_component::{
-    Category, Component, Env, Id, LocalComponent, Requirement, Source, TagInformation,
+    Component, Env, LocalComponent, LocalComponentEntry, Requirement, RuntimeDirectory, Source,
+    TagInformation,
 };
 use invar_pack::Pack;
 use persist::PersistedEntity;
+use strum::IntoEnumIterator;
 use walkdir::WalkDir;
 
 pub mod persist;
@@ -20,14 +22,8 @@ impl LocalRepository {
     pub const COMPONENT_FILE_EXTENSION: &str = "yml";
     pub const COMPONENT_FILE_SUFFIX: &str = "invar";
 
-    pub const BACKUP_FOLDER: &str = ".backups";
-    pub const BACKUP_FOLDER_SEP: char = '_';
-
-    pub const MOD_FOLDER: &str = "mods";
-    pub const RESOURCEPACK_FOLDER: &str = "resourcepacks";
-    pub const SHADER_FOLDER: &str = "shaders";
-    pub const DATAPACK_FOLDER: &str = "datapacks";
-    pub const CONFIG_FOLDER: &str = "config";
+    pub const BACKUP_DIRECTORY: &str = ".backups";
+    pub const BACKUP_DIRECTORY_SEP: char = '_';
 
     /// "Open" a local repository in `root_directory`.
     ///
@@ -76,46 +72,60 @@ impl LocalRepository {
     /// # Errors
     ///
     /// This function will return an error if the underlying data directories
-    /// cannot be traversed, files inside of them cannot be read. It will also
-    /// return an error if a metadata file does not contain a valid
+    /// cannot be traversed, or files inside of them cannot be read. It will
+    /// also return an error if a metadata file does not contain a valid
     /// [`Component`] schema.
-    #[expect(clippy::manual_flatten, reason = "Will fix later (never lol)")]
-    pub fn list_components(&self) -> Result<Vec<Component>, self::Error> {
+    pub fn components(&self) -> Result<Vec<Component>, self::Error> {
         let mut components = vec![];
-        for entry in WalkDir::new(&self.root_directory) {
-            if let Ok(file) = entry {
-                if !file.file_type().is_file() {
-                    continue;
-                }
-                if file.is_component_file() {
-                    let yml = std::fs::read_to_string(file.path())?;
-                    let component: Component = serde_yml::from_str(&yml)?;
-                    components.push(component);
-                } else {
-                    let path = file.path().to_path_buf();
-                    let local_component = LocalComponent { path };
-                    let source = Source::Local(local_component);
-                    let id = Id::from(
-                        file.path()
-                            .file_stem()
-                            .ok_or(Error::EmptyFilename)?
-                            .to_string_lossy()
-                            .to_string(),
-                    );
-                    let component = Component {
-                        id,
-                        category: Category::Mod,
-                        tags: TagInformation::none(),
-                        environment: Env {
-                            client: Requirement::Required,
-                            server: Requirement::Required,
-                        },
-                        source,
-                    };
-                    components.push(component);
-                }
+
+        for entry in WalkDir::new(&self.root_directory).into_iter().flatten() {
+            if entry.is_component_file() {
+                let yml = std::fs::read_to_string(entry.path())?;
+                let component: Component = serde_yml::from_str(&yml)?;
+                components.push(component);
             }
         }
+
+        for entry @ LocalComponentEntry { path, category } in &self.pack.local_components {
+            let component = Component {
+                id: entry.id(),
+                category: *category,
+                tags: TagInformation::default(),
+                environment: Env {
+                    client: Requirement::Required,
+                    server: Requirement::Required,
+                },
+                source: Source::Local(LocalComponent { path: path.clone() }),
+            };
+
+            components.push(component);
+        }
+
+        // else {
+        //     let path = entry.path().to_path_buf();
+        //     let local_component = LocalComponent { path };
+        //     let source = Source::Local(local_component);
+        //     let id = Id::from(
+        //         entry
+        //             .path()
+        //             .file_stem()
+        //             .ok_or(Error::EmptyFilename)?
+        //             .to_string_lossy()
+        //             .to_string(),
+        //     );
+
+        //     let component = Component {
+        //         id,
+        //         category: Category::Mod,
+        //         tags: TagInformation::none(),
+        //         environment: Env {
+        //             client: Requirement::Required,
+        //             server: Requirement::Required,
+        //         },
+        //         source,
+        //     };
+        //     components.push(component);
+        // }
 
         Ok(components)
     }
@@ -134,13 +144,8 @@ impl LocalRepository {
     pub fn component_path(&self, component: &Component) -> PathBuf {
         let mut path = self.root_directory.clone();
 
-        path.push(match &component.category {
-            Category::Mod => Self::MOD_FOLDER,
-            Category::Resourcepack => Self::RESOURCEPACK_FOLDER,
-            Category::Shader => Self::SHADER_FOLDER,
-            Category::Datapack => Self::DATAPACK_FOLDER,
-            Category::Config => Self::CONFIG_FOLDER,
-        });
+        let runtime_dir = RuntimeDirectory::from(component.category).to_string();
+        path.push(runtime_dir);
 
         if let Some(main_tag) = &component.tags.main {
             path.push(main_tag.to_string());
@@ -156,23 +161,41 @@ impl LocalRepository {
         path
     }
 
-    pub fn save_component(&self, component: &Component) {
-        let target_path = self.component_path(component);
-        let yaml_repr = serde_yml::to_string(component).unwrap();
-        fs::write(target_path, yaml_repr).unwrap();
+    pub fn save_component(&mut self, component: &Component) {
+        match component.source {
+            Source::Local(ref source) => {
+                self.pack.local_components.push(LocalComponentEntry {
+                    path: source.path.clone(),
+                    category: component.category,
+                });
+                self.pack.write().unwrap();
+            }
+            Source::Remote(_) => {
+                let target_path = self.component_path(component);
+                let yaml_repr = serde_yml::to_string(component).unwrap();
+                fs::write(target_path, yaml_repr).unwrap();
+            }
+        }
     }
 
-    pub fn remove_component<S>(&self, id: S) -> Result<(), self::Error>
+    pub fn remove_component<S>(&mut self, id: S) -> Result<(), self::Error>
     where
         S: AsRef<str>,
     {
         for component in self
-            .list_components()?
+            .components()?
             .into_iter()
-            .filter(|c| c.id == id.as_ref().into())
+            .filter(|component| component.id == id.as_ref().into())
         {
-            let path_to_remove = self.component_path(&component);
-            std::fs::remove_file(path_to_remove)?;
+            if component.is_remote() {
+                let path_to_remove = self.component_path(&component);
+                std::fs::remove_file(path_to_remove)?;
+            } else {
+                self.pack
+                    .local_components
+                    .retain(|local_entry| local_entry.id() != id.as_ref().into());
+                self.pack.write()?;
+            }
         }
 
         Ok(())
@@ -183,16 +206,10 @@ impl LocalRepository {
     /// # Errors
     ///
     /// May return an I/O error if some folders are already set up.
-    pub fn setup_folders(&self) -> io::Result<()> {
-        for folder in [
-            Self::MOD_FOLDER,
-            Self::RESOURCEPACK_FOLDER,
-            Self::SHADER_FOLDER,
-            Self::DATAPACK_FOLDER,
-            Self::CONFIG_FOLDER,
-        ] {
+    pub fn setup_directories(&self) -> io::Result<()> {
+        for directory in RuntimeDirectory::iter() {
             let mut target = self.root_directory.clone();
-            target.push(folder);
+            target.push(PathBuf::from(directory));
             if !fs::exists(&target)? {
                 fs::create_dir_all(&target)?;
             }
@@ -202,8 +219,8 @@ impl LocalRepository {
             }
         }
 
-        fs::create_dir_all(Self::BACKUP_FOLDER)?;
-        fs::write(format!("{}/.gitignore", Self::BACKUP_FOLDER), "*\n")?;
+        fs::create_dir_all(Self::BACKUP_DIRECTORY)?;
+        fs::write(format!("{}/.gitignore", Self::BACKUP_DIRECTORY), "*\n")?;
 
         Ok(())
     }
