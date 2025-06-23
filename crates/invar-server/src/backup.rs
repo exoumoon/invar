@@ -82,9 +82,8 @@ pub fn get_all_backups() -> Result<Vec<Backup>, std::io::Error> {
 /// # Errors
 ///
 /// See [`local_storage::Error`] for possible error causes.
-pub fn create_new(tag: Option<&str>) -> Result<Backup, self::Error> {
-    // let pack_name = Pack::read()?.name;
-    let pack_name = "fuckshit";
+pub fn create_new(tag: Option<&str>, pack: &Pack) -> Result<Backup, self::Error> {
+    let pack_name = &pack.name;
     let seq_number = get_all_backups()?
         .into_iter()
         .map(|backup| backup.seq_number)

@@ -34,7 +34,7 @@ pub trait Server: fmt::Debug + Serialize + for<'de> Deserialize<'de> {
     /// # Errors
     ///
     /// ...
-    fn stop(&self) -> Result<(), Self::StartStopError>;
+    fn stop(&self, pack: &Pack) -> Result<(), Self::StartStopError>;
 
     /// Report the status of the server.
     ///

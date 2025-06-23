@@ -212,7 +212,7 @@ fn run_with_options(options: Options) -> Result<(), Report> {
                 .start(&local_repository.pack)
                 .wrap_err("Failed to start the server"),
             ServerAction::Stop => DockerCompose::read()?
-                .stop()
+                .stop(&local_repository.pack)
                 .wrap_err("Failed to stop the server"),
             ServerAction::Status => {
                 let error = eyre::eyre!("Checking the status of the server isn't yet implemented")
@@ -223,7 +223,7 @@ fn run_with_options(options: Options) -> Result<(), Report> {
 
             ServerAction::Backup { action } => match action {
                 BackupAction::List => backup_list(&options),
-                BackupAction::Create => backup_create(),
+                BackupAction::Create => backup_create(&local_repository.pack),
                 BackupAction::Gc => backup_gc(&options),
             },
         },
@@ -255,8 +255,8 @@ fn backup_list(options: &Options) -> Result<(), Report> {
 }
 
 #[instrument]
-fn backup_create() -> Result<(), Report> {
-    backup::create_new(Some("ondemand"))?;
+fn backup_create(pack: &Pack) -> Result<(), Report> {
+    backup::create_new(Some("ondemand"), pack)?;
     Ok(())
 }
 

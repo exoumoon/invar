@@ -211,9 +211,10 @@ impl Server for DockerCompose {
 
     fn start(&self, pack: &Pack) -> Result<(), Self::StartStopError> {
         if matches!(pack.settings.backup_mode, BackupMode::StartStop { .. }) {
-            let _new_backup = backup::create_new(Some("pre-start"))?;
+            let _new_backup = backup::create_new(Some("pre-start"), pack)?;
             let _gc_result = backup::gc()?;
         }
+
         let status = std::process::Command::new("docker")
             .args([
                 "compose",
@@ -233,9 +234,12 @@ impl Server for DockerCompose {
         }
     }
 
-    fn stop(&self) -> Result<(), Self::StartStopError> {
-        let _new_backup = backup::create_new(Some("post-stop"))?;
-        let _gc_result = backup::gc()?;
+    fn stop(&self, pack: &Pack) -> Result<(), Self::StartStopError> {
+        if matches!(pack.settings.backup_mode, BackupMode::StartStop { .. }) {
+            let _new_backup = backup::create_new(Some("post-stop"), pack)?;
+            let _gc_result = backup::gc()?;
+        }
+
         let status = std::process::Command::new("docker")
             .args([
                 "compose",
