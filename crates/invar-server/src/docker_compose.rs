@@ -103,6 +103,7 @@ pub enum StartStopError {
 impl Server for DockerCompose {
     type SetupError = self::SetupError;
     type StartStopError = self::StartStopError;
+    type StatusError = ();
 
     #[expect(clippy::match_wild_err_arm)]
     fn setup() -> Result<Self, Self::SetupError> {

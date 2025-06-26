@@ -1,4 +1,3 @@
-#![feature(never_type)]
 #![allow(clippy::missing_panics_doc, clippy::missing_errors_doc)]
 
 use std::fmt;
@@ -14,6 +13,7 @@ pub const DEFAULT_MINECRAFT_PORT: u16 = 25565;
 pub trait Server: fmt::Debug + Serialize + for<'de> Deserialize<'de> {
     type SetupError;
     type StartStopError;
+    type StatusError;
 
     /// Prepare everything for the first start of the server.
     ///
@@ -41,7 +41,7 @@ pub trait Server: fmt::Debug + Serialize + for<'de> Deserialize<'de> {
     /// # Errors
     ///
     /// ...
-    fn status(&self) -> Result<(), !> {
+    fn status(&self) -> Result<(), Self::StatusError> {
         todo!("Querying the server's status isn't yet implemented")
     }
 }

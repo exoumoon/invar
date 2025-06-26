@@ -1,5 +1,3 @@
-#![feature(never_type)]
-#![feature(let_chains)]
 #![allow(clippy::missing_errors_doc, clippy::missing_panics_doc)]
 
 use invar_pack::Pack;
