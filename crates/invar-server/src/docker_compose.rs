@@ -88,6 +88,10 @@ impl DockerCompose {
 pub enum SetupError {
     #[error("A local server is already configured for this pack")]
     AlreadySetUp,
+    #[error("An I/O error occurred")]
+    Io(#[from] io::Error),
+    #[error("Failed to interact with the local repository")]
+    Repository(#[from] invar_repository::Error),
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -96,7 +100,7 @@ pub enum StartStopError {
     ExitCode(#[from] io::Error),
     #[error("Process terminated by signal")]
     Terminated,
-    #[error("Failed to backup server")]
+    #[error("Failed to create a backup of the server")]
     BackupError(#[from] backup::Error),
 }
 
@@ -105,16 +109,13 @@ impl Server for DockerCompose {
     type StartStopError = self::StartStopError;
     type StatusError = ();
 
-    #[expect(clippy::match_wild_err_arm)]
     fn setup() -> Result<Self, Self::SetupError> {
-        let local_repo = LocalRepository::open_at_git_root().unwrap();
-        if let Err(error) = fs::create_dir_all(DATA_VOLUME_PATH) {
-            match error.kind() {
-                io::ErrorKind::AlreadyExists => {}
-                _ => {
-                    todo!()
-                }
-            }
+        let local_repo = LocalRepository::open_at_git_root()?;
+
+        if let Err(error) = fs::create_dir_all(DATA_VOLUME_PATH)
+            && error.kind() != io::ErrorKind::AlreadyExists
+        {
+            return Err(SetupError::Repository(error.into()));
         }
 
         let volumes = vec![
@@ -186,27 +187,15 @@ impl Server for DockerCompose {
         };
 
         let manifest_path = <Self as PersistedEntity>::FILE_PATH;
-        match std::fs::exists(manifest_path) {
-            Ok(true) => {
-                // tracing::warn!(
-                //     "A {server_type:?} server is already set up. Delete {manifest_path:?}
-                // before re-setup",     server_type =
-                // std::any::type_name::<Self>() );
-                return Err(SetupError::AlreadySetUp);
-            }
-            Err(_) => {
-                // return Err(PersistError::Io {
-                //     source: error,
-                //     faulty_path: Some(PathBuf::from(DATA_VOLUME_PATH)),
-                // }
-                // .into());
-                panic!()
-            }
-            _ => { /* All fine, go on */ }
+        if std::fs::exists(manifest_path)? {
+            tracing::warn!("Server is already set up. Delete {manifest_path:?} for re-setup",);
+            return Err(SetupError::AlreadySetUp);
         }
 
         let docker_compose = Self(manifest);
-        docker_compose.write().unwrap();
+        docker_compose
+            .write()
+            .map_err(invar_repository::Error::Persistence)?;
         Ok(docker_compose)
     }
 

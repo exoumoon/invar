@@ -135,21 +135,23 @@ impl LocalRepository {
         path
     }
 
-    pub fn save_component(&mut self, component: &Component) {
+    pub fn save_component(&mut self, component: &Component) -> Result<(), self::Error> {
         match component.source {
             Source::Local(ref source) => {
                 self.pack.local_components.push(LocalComponentEntry {
                     path: source.path.clone(),
                     category: component.category,
                 });
-                self.pack.write().unwrap();
+                self.pack.write()?;
             }
             Source::Remote(_) => {
                 let target_path = self.component_path(component);
-                let yaml_repr = serde_yml::to_string(component).unwrap();
-                fs::write(target_path, yaml_repr).unwrap();
+                let yaml_repr = serde_yml::to_string(component)?;
+                fs::write(target_path, yaml_repr)?;
             }
         }
+
+        Ok(())
     }
 
     pub fn remove_component<S>(&mut self, id: S) -> Result<(), self::Error>
@@ -207,6 +209,7 @@ pub enum Error {
     SerdeYml(#[from] serde_yml::Error),
     #[error("A component file does not have a name")]
     EmptyFilename,
+    #[error("Failed to read from or write to a persistent file")]
     Persistence(#[from] persist::PersistError),
 }
 

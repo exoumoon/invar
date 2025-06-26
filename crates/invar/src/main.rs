@@ -26,7 +26,7 @@ use invar_server::{backup, Server};
 use itertools::Itertools;
 use semver::Version;
 use strum::IntoEnumIterator;
-use tracing::{instrument, Level};
+use tracing::instrument;
 
 use crate::cli::{ComponentAction, Options, PackAction, Subcommand};
 
@@ -37,9 +37,6 @@ fn main() -> Result<(), Report> {
     let options = Options::parse();
     color_eyre::install()?;
     install_tracing()?;
-
-    let span = tracing::span!(Level::DEBUG, "invar");
-    let _guard = span.enter();
 
     let status = run_with_options(options);
     if let Err(mut report) = status {
@@ -71,16 +68,17 @@ fn main() -> Result<(), Report> {
 
 #[instrument(name = "action_handling")]
 fn run_with_options(options: Options) -> Result<(), Report> {
-    let mut local_repository = LazyCell::new(|| LocalRepository::open_at_git_root().unwrap());
     let modrinth_repository = LazyCell::new(ModrinthRepository::new);
 
     match options.subcommand {
         Subcommand::Pack { action } => match action {
             PackAction::Show => {
+                let local_repository = LocalRepository::open_at_git_root()?;
                 println!("{}", serde_yml::to_string(&local_repository.pack)?);
                 Ok(())
             }
             PackAction::Export => {
+                let local_repository = LocalRepository::open_at_git_root()?;
                 let components = local_repository.components()?;
                 local_repository.pack.export(components)?;
                 Ok(())
@@ -96,6 +94,7 @@ fn run_with_options(options: Options) -> Result<(), Report> {
 
         Subcommand::Component { action } => match action {
             ComponentAction::List => {
+                let local_repository = LocalRepository::open_at_git_root()?;
                 for ref component @ Component {
                     ref id,
                     ref category,
@@ -127,6 +126,7 @@ fn run_with_options(options: Options) -> Result<(), Report> {
             }
 
             ComponentAction::Add { ids, local } => {
+                let mut local_repository = LocalRepository::open_at_git_root()?;
                 for id in &ids {
                     let source = if local {
                         let path = PathBuf::from(id);
@@ -182,12 +182,13 @@ fn run_with_options(options: Options) -> Result<(), Report> {
                         source,
                     };
 
-                    local_repository.save_component(&component);
+                    local_repository.save_component(&component)?;
                 }
                 Ok(())
             }
 
             ComponentAction::Remove { ids } => {
+                let mut local_repository = LocalRepository::open_at_git_root()?;
                 for id in ids {
                     local_repository
                         .remove_component(id)
@@ -204,29 +205,33 @@ fn run_with_options(options: Options) -> Result<(), Report> {
             }
         },
 
-        Subcommand::Server { ref action, .. } => match action {
-            ServerAction::Setup => DockerCompose::setup()
-                .map(|_| ())
-                .wrap_err("Failed to setup the server"),
-            ServerAction::Start => DockerCompose::read()?
-                .start(&local_repository.pack)
-                .wrap_err("Failed to start the server"),
-            ServerAction::Stop => DockerCompose::read()?
-                .stop(&local_repository.pack)
-                .wrap_err("Failed to stop the server"),
-            ServerAction::Status => {
-                let error = eyre::eyre!("Checking the status of the server isn't yet implemented")
-                    .with_note(|| "This will be implemented in a future version of Invar.")
-                    .with_suggestion(|| "`docker compose ps` may have what you need.");
-                Err(error)
-            }
+        Subcommand::Server { ref action, .. } => {
+            let local_repository = LocalRepository::open_at_git_root()?;
+            match action {
+                ServerAction::Setup => DockerCompose::setup()
+                    .map(|_| ())
+                    .wrap_err("Failed to setup the server"),
+                ServerAction::Start => DockerCompose::read()?
+                    .start(&local_repository.pack)
+                    .wrap_err("Failed to start the server"),
+                ServerAction::Stop => DockerCompose::read()?
+                    .stop(&local_repository.pack)
+                    .wrap_err("Failed to stop the server"),
+                ServerAction::Status => {
+                    let error =
+                        eyre::eyre!("Checking the status of the server isn't yet implemented")
+                            .with_note(|| "This will be implemented in a future version of Invar.")
+                            .with_suggestion(|| "`docker compose ps` may have what you need.");
+                    Err(error)
+                }
 
-            ServerAction::Backup { action } => match action {
-                BackupAction::List => backup_list(&options),
-                BackupAction::Create => backup_create(&local_repository.pack),
-                BackupAction::Gc => backup_gc(&options),
-            },
-        },
+                ServerAction::Backup { action } => match action {
+                    BackupAction::List => backup_list(&options),
+                    BackupAction::Create => backup_create(&local_repository.pack),
+                    BackupAction::Gc => backup_gc(&options),
+                },
+            }
+        }
 
         Subcommand::Completions { shell } => {
             let mut command = Options::command();

@@ -7,7 +7,6 @@ use color_eyre::owo_colors::OwoColorize;
 use invar_pack::Pack;
 use invar_pack::settings::BackupMode;
 use invar_repository::LocalRepository;
-use invar_repository::persist::PersistedEntity;
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
@@ -119,7 +118,8 @@ pub fn create_new(tag: Option<&str>, pack: &Pack) -> Result<Backup, self::Error>
 /// See [`local_storage::Error`] for possible error causes.
 pub fn gc() -> Result<GcResult, self::Error> {
     let mut all_backups = get_all_backups()?;
-    match Pack::read().unwrap().settings.backup_mode {
+    let local_repository = LocalRepository::open_at_git_root()?;
+    match local_repository.pack.settings.backup_mode {
         BackupMode::StartStop { min_depth } => {
             let remaining = all_backups.drain(..min_depth).collect_vec();
             let removed = all_backups;
@@ -149,6 +149,8 @@ pub enum Error {
     Io(#[from] std::io::Error),
     #[error("Failed to copy over files for backup")]
     CopyDir { error_list: Vec<std::io::Error> },
+    #[error("Failed to interact with the local repository")]
+    Repository(#[from] invar_repository::Error),
 }
 
 impl fmt::Display for Backup {

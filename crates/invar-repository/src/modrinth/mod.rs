@@ -20,6 +20,7 @@ impl ModrinthRepository {
         " (mxxntype)"
     );
 
+    #[expect(clippy::missing_panics_doc)]
     pub fn new() -> Self {
         Self {
             client: reqwest::blocking::Client::builder()
@@ -35,13 +36,7 @@ impl ModrinthRepository {
     {
         let project_id = project_id.as_ref();
         let url = format!("https://api.modrinth.com/v3/project/{project_id}");
-        let project = self
-            .client
-            .get(url)
-            .send()
-            .unwrap()
-            .json::<models::Project>()
-            .unwrap();
+        let project = self.client.get(url).send()?.json::<models::Project>()?;
         Ok(project)
     }
 
@@ -51,7 +46,7 @@ impl ModrinthRepository {
     {
         let project_id = project_id.as_ref();
         let url = format!("https://api.modrinth.com/v3/project/{project_id}/version");
-        let version = self.client.get(url).send().unwrap().json().unwrap();
+        let version = self.client.get(url).send()?.json()?;
         Ok(version)
     }
 }

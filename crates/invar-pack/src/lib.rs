@@ -1,4 +1,4 @@
-#![expect(clippy::missing_errors_doc)]
+#![allow(clippy::missing_errors_doc)]
 
 use std::fs::File;
 use std::io::Write;
