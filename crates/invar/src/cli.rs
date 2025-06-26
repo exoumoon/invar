@@ -81,7 +81,7 @@ pub enum PackAction {
         overwrite: bool,
     },
 
-    /// Read the local storage and show Invar sees.
+    /// Read the local storage and show what Invar sees.
     Show,
 
     /// Export the modpack in `.mrpack` format.
