@@ -23,7 +23,6 @@ impl PersistedEntity for DockerCompose {
     const FILE_PATH: &'static str = "docker-compose.yaml";
 }
 
-#[allow(clippy::empty_enum, reason = "Rises from within bon")]
 #[bon]
 impl DockerCompose {
     pub const MODPACK_PATH: &'static str = "/data/modpack.mrpack";
