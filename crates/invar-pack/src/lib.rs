@@ -11,6 +11,7 @@ use settings::Settings;
 use zip::write::SimpleFileOptions;
 use zip::ZipWriter;
 
+use crate::index::overrides::COMMON_OVERRIDES_DIR;
 use crate::instance::Instance;
 
 pub mod index;
@@ -39,9 +40,10 @@ impl Pack {
 
     pub fn export<I>(&self, components: I) -> Result<(), ExportError>
     where
-        I: IntoIterator<Item = Component>,
+        I: IntoIterator<Item = Component> + Clone,
     {
         let files = components
+            .clone()
             .into_iter()
             .filter_map(|component| match component.source {
                 Source::Remote(ref source) => {
@@ -53,7 +55,7 @@ impl Pack {
                         .build();
                     Some(file)
                 }
-                // skip this shit for now
+                // Local components are handled as via overrides.
                 Source::Local(_) => None,
             })
             .collect::<Vec<_>>();
@@ -64,8 +66,20 @@ impl Pack {
         let file = File::create(self.modpack_filename())?;
         let options = SimpleFileOptions::default();
         let mut mrpack = ZipWriter::new(file);
+
         mrpack.start_file(Self::INDEX_FILE_NAME, options)?;
         mrpack.write_all(json.as_bytes())?;
+
+        for component in components {
+            if let Source::Local(local_component) = &component.source {
+                let local_file_contents = std::fs::read_to_string(&local_component.path)?;
+                let runtime_path = PathBuf::from(component.runtime_path());
+                let runtime_path = runtime_path.to_string_lossy();
+                mrpack.start_file(format!("{COMMON_OVERRIDES_DIR}/{runtime_path}"), options)?;
+                mrpack.write_all(local_file_contents.as_bytes())?;
+            }
+        }
+
         mrpack.finish()?;
 
         Ok(())

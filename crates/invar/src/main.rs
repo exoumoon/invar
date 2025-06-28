@@ -83,6 +83,11 @@ fn run_with_options(options: Options) -> Result<(), Report> {
                 local_repository.pack.export(components)?;
                 Ok(())
             }
+            PackAction::SetupDirectories => {
+                let local_repository = LocalRepository::open_at_git_root()?;
+                local_repository.setup_directories()?;
+                Ok(())
+            }
             PackAction::Setup {
                 name,
                 minecraft_version,
@@ -361,8 +366,12 @@ fn setup_pack(
         settings: Settings::default(),
         local_components: vec![],
     };
+
     pack.write()?;
-    tracing::info!(pack_file = ?Pack::FILE_PATH, "Done");
+
+    let local_repo = LocalRepository::open_at_git_root()?;
+    local_repo.setup_directories()?;
+
     Ok(())
 }
 

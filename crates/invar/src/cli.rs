@@ -81,6 +81,8 @@ pub enum PackAction {
         overwrite: bool,
     },
 
+    SetupDirectories,
+
     /// Read the local storage and show what Invar sees.
     Show,
 
