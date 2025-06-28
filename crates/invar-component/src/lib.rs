@@ -31,14 +31,16 @@ pub use tag::*;
 #[nutype(
     sanitize(trim, lowercase),
     derive(
-        Clone,
-        PartialEq,
-        Eq,
         From,
         Into,
-        Display,
         Serialize,
         Deserialize,
+        PartialEq,
+        Eq,
+        PartialOrd,
+        Ord,
+        Display,
+        Clone,
         Debug,
     )
 )]
@@ -152,7 +154,20 @@ impl LocalComponentEntry {
 }
 
 /// Possible types (categories) of [`Component`]s.
-#[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Hash, Display, ValueEnum, Debug)]
+#[derive(
+    Serialize,
+    Deserialize,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    Display,
+    ValueEnum,
+    Debug,
+)]
 #[serde(rename_all = "camelCase")]
 pub enum Category {
     Mod,

@@ -106,7 +106,10 @@ fn run_with_options(options: Options) -> Result<(), Report> {
                     ref environment,
                     ref source,
                     tags: _,
-                } in local_repository.components()?
+                } in local_repository
+                    .components()?
+                    .into_iter()
+                    .sorted_by_key(|component| (component.category, component.id.clone()))
                 {
                     let source_str_repr = match source {
                         Source::Remote(_) => "Remote",
