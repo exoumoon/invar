@@ -171,7 +171,11 @@ fn run(options: Options) -> Result<(), Report> {
                     let category = match forced_category {
                         Some(forced_category) => forced_category,
                         None => match &source {
-                            Source::Remote(_) => Category::Mod,
+                            Source::Remote(_) => {
+                                let mut project = modrinth_repository.fetch_project(id)?;
+                                project.types.sort_unstable();
+                                project.types.into_iter().next().unwrap_or(Category::Mod)
+                            }
                             Source::Local(local_component) => {
                                 let runtime_dir = local_component
                                     .path
@@ -197,9 +201,15 @@ fn run(options: Options) -> Result<(), Report> {
                         source,
                     };
 
-                    tracing::info!(?component.category, "Ready to save the component");
-
                     local_repository.save_component(&component)?;
+
+                    if component.source.is_local() {
+                        let pack_file = <Pack as PersistedEntity>::FILE_PATH;
+                        tracing::info!(?component.category, "Component entry registered in {pack_file}");
+                    } else {
+                        let component_file = local_repository.component_path(&component);
+                        tracing::info!(?component.category, component.file = ?component_file, "Component saved in file");
+                    }
                 }
 
                 Ok(())
