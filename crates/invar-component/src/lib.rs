@@ -91,6 +91,19 @@ impl Source {
     }
 }
 
+impl fmt::Display for Source {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            formatter,
+            "{}",
+            match self {
+                Self::Remote(_) => "Remote",
+                Self::Local(_) => "Local",
+            }
+        )
+    }
+}
+
 /// A **remote** modpack component.
 ///
 /// **Remote** here can be understood as **"downloadable from some kind of

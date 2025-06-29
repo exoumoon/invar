@@ -6,6 +6,7 @@ use clap::{Parser, ValueEnum};
 use clap_complete::shells::{Bash, Elvish, Fish, PowerShell, Zsh};
 use clap_complete::Generator;
 use clap_complete_nushell::Nushell;
+use invar_component::Category;
 use invar_pack::instance::Loader;
 use semver::Version;
 
@@ -21,9 +22,6 @@ const STYLES: Styles = Styles::styled()
 pub struct Options {
     #[command(subcommand)]
     pub subcommand: Subcommand,
-
-    #[arg(short('f'), long("format"), default_value_t = OutputFormat::default())]
-    pub output_format: OutputFormat,
 }
 
 #[derive(clap::Subcommand, Debug)]
@@ -104,6 +102,10 @@ pub enum ComponentAction {
         /// Whether to tread `ids` as paths to local files.
         #[arg(short, long)]
         local: bool,
+
+        /// Force all listed components to be added to this category.
+        #[arg(short('c'), long("category"))]
+        forced_category: Option<Category>,
     },
 
     /// Update one or more of the existing components.
@@ -152,14 +154,6 @@ pub enum BackupAction {
 
     /// Garbage-collect backups.
     Gc,
-}
-
-#[derive(Debug, Default, Clone, PartialEq, Eq, clap::ValueEnum, strum::Display)]
-#[strum(serialize_all = "kebab-case")]
-pub enum OutputFormat {
-    #[default]
-    Human,
-    Yaml,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, ValueEnum)]

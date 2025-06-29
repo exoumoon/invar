@@ -154,10 +154,12 @@ impl LocalRepository {
         Ok(())
     }
 
-    pub fn remove_component<S>(&mut self, id: S) -> Result<(), self::Error>
+    pub fn remove_components<S>(&mut self, id: S) -> Result<(), self::Error>
     where
         S: AsRef<str>,
     {
+        let mut result = Err(Error::ComponentNotFound);
+
         for component in self
             .components()?
             .into_iter()
@@ -172,9 +174,11 @@ impl LocalRepository {
                     .retain(|local_entry| local_entry.id() != id.as_ref().into());
                 self.pack.write()?;
             }
+
+            result = Ok(());
         }
 
-        Ok(())
+        result
     }
 
     /// Create the data subdirectories in the current directory.
@@ -211,6 +215,8 @@ pub enum Error {
     EmptyFilename,
     #[error("Failed to read from or write to a persistent file")]
     Persistence(#[from] persist::PersistError),
+    #[error("No matching components found")]
+    ComponentNotFound,
 }
 
 trait ComponentFile {
