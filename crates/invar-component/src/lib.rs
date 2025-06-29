@@ -57,18 +57,6 @@ pub struct Component {
     pub source: Source,
 }
 
-impl Component {
-    #[must_use]
-    pub const fn is_remote(&self) -> bool {
-        matches!(self.source, Source::Remote(_))
-    }
-
-    #[must_use]
-    pub const fn is_local(&self) -> bool {
-        matches!(self.source, Source::Local(_))
-    }
-}
-
 /// Possible sources where a [`Component`] might come from.
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[must_use]
@@ -90,6 +78,16 @@ impl Source {
             Self::Remote(remote_component) => remote_component.file_name.clone(),
             Self::Local(local_component) => local_component.path.file_name().unwrap().into(),
         }
+    }
+
+    #[must_use]
+    pub const fn is_remote(&self) -> bool {
+        matches!(self, Self::Remote(_))
+    }
+
+    #[must_use]
+    pub const fn is_local(&self) -> bool {
+        matches!(self, Self::Local(_))
     }
 }
 

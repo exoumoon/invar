@@ -163,7 +163,7 @@ impl LocalRepository {
             .into_iter()
             .filter(|component| component.id == id.as_ref().into())
         {
-            if component.is_remote() {
+            if component.source.is_remote() {
                 let path_to_remove = self.component_path(&component);
                 std::fs::remove_file(path_to_remove)?;
             } else {

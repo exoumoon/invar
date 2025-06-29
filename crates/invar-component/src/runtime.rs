@@ -1,9 +1,11 @@
 use std::path::PathBuf;
 
+use strum::{Display, EnumIter, EnumString};
+
 use crate::{Category, Component};
 
-#[derive(strum::Display, strum::EnumIter, Clone, Copy, PartialEq, Eq, Debug)]
-#[strum(serialize_all = "lowercase")]
+#[derive(Display, EnumIter, EnumString, Clone, Copy, PartialEq, Eq, Debug)]
+#[strum(serialize_all = "lowercase", ascii_case_insensitive)]
 #[must_use]
 pub enum RuntimeDirectory {
     Config,
@@ -28,6 +30,18 @@ impl From<Category> for RuntimeDirectory {
             Category::Shader => Self::Shaderpacks,
             Category::Datapack => Self::Datapacks,
             Category::Config => Self::Config,
+        }
+    }
+}
+
+impl From<RuntimeDirectory> for Category {
+    fn from(runtime_dir: RuntimeDirectory) -> Self {
+        match runtime_dir {
+            RuntimeDirectory::Config => Self::Config,
+            RuntimeDirectory::Datapacks => Self::Datapack,
+            RuntimeDirectory::Mods => Self::Mod,
+            RuntimeDirectory::Resourcepacks => Self::Resourcepack,
+            RuntimeDirectory::Shaderpacks => Self::Shader,
         }
     }
 }

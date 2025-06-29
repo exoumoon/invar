@@ -2,7 +2,8 @@ mod cli;
 
 use std::cell::LazyCell;
 use std::collections::HashSet;
-use std::path::PathBuf;
+use std::ffi::OsStr;
+use std::path::{Path, PathBuf};
 use std::{fs, io};
 
 use clap::{CommandFactory, Parser};
@@ -10,10 +11,11 @@ use cli::{BackupAction, OutputFormat, ServerAction};
 use color_eyre::eyre::Report;
 use color_eyre::owo_colors::OwoColorize;
 use color_eyre::Section;
-use eyre::Context;
+use eyre::{Context, ContextCompat};
 use inquire::validator::{StringValidator, Validation};
 use invar_component::{
-    Component, Env, Id, LocalComponent, RemoteComponent, Source, TagInformation,
+    Category, Component, Env, Id, LocalComponent, RemoteComponent, Requirement, RuntimeDirectory,
+    Source, TagInformation,
 };
 use invar_pack::instance::version::MinecraftVersion;
 use invar_pack::instance::{Instance, Loader};
@@ -136,9 +138,18 @@ fn run_with_options(options: Options) -> Result<(), Report> {
             ComponentAction::Add { ids, local } => {
                 let mut local_repository = LocalRepository::open_at_git_root()?;
                 for id in &ids {
-                    let source = if local {
-                        let path = PathBuf::from(id);
-                        Source::Local(LocalComponent { path })
+                    let (source, category) = if local {
+                        let path = PathBuf::from(id).canonicalize()?;
+                        let runtime_dir = path
+                            .parent()
+                            .and_then(Path::file_name)
+                            .and_then(OsStr::to_str)
+                            .wrap_err("Failed to figure out the component's parent directory")?
+                            .parse::<RuntimeDirectory>()
+                            .wrap_err("Failed to categorize the component by its parent dir")?;
+                        let category = Category::from(runtime_dir);
+                        let source = Source::Local(LocalComponent { path });
+                        (source, category)
                     } else {
                         let fetched_versions = modrinth_repository.fetch_versions(id)?;
                         let versions = fetched_versions
@@ -170,22 +181,24 @@ fn run_with_options(options: Options) -> Result<(), Report> {
                             .wrap_err("Failed to prompt for a component version")?;
 
                         let first_file = selected_version.files.into_iter().next().unwrap();
-                        Source::Remote(RemoteComponent {
+                        let source = Source::Remote(RemoteComponent {
                             download_url: first_file.url,
                             file_name: PathBuf::from(first_file.name),
                             file_size: first_file.size,
                             version_id: selected_version.id,
                             hashes: first_file.hashes,
-                        })
+                        });
+
+                        (source, Category::Mod)
                     };
 
                     let component = Component {
                         id: Id::from(id.clone()),
-                        category: invar_component::Category::Mod,
+                        category,
                         tags: TagInformation::default(),
                         environment: Env {
-                            client: invar_component::Requirement::Required,
-                            server: invar_component::Requirement::Required,
+                            client: Requirement::Required,
+                            server: Requirement::Required,
                         },
                         source,
                     };
