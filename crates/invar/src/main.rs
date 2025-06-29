@@ -121,13 +121,13 @@ fn run(options: Options) -> Result<(), Report> {
             } => {
                 let mut local_repository = LocalRepository::open_at_git_root()?;
 
-                for id in &ids {
+                for id in ids {
                     let source = if local {
-                        let path = PathBuf::from(id).canonicalize()?;
+                        let path = PathBuf::from(&id).canonicalize()?;
                         let local_component = LocalComponent { path };
                         Source::Local(local_component)
                     } else {
-                        let fetched_versions = modrinth_repository.fetch_versions(id)?;
+                        let fetched_versions = modrinth_repository.fetch_versions(&id)?;
                         let versions = fetched_versions
                             .into_iter()
                             .filter(|version| {
@@ -172,7 +172,7 @@ fn run(options: Options) -> Result<(), Report> {
                         Some(forced_category) => forced_category,
                         None => match &source {
                             Source::Remote(_) => {
-                                let mut project = modrinth_repository.fetch_project(id)?;
+                                let mut project = modrinth_repository.fetch_project(&id)?;
                                 project.types.sort_unstable();
                                 project.types.into_iter().next().unwrap_or(Category::Mod)
                             }
@@ -191,14 +191,14 @@ fn run(options: Options) -> Result<(), Report> {
                     };
 
                     let component = Component {
-                        id: Id::from(id.clone()),
+                        id: Id::from(id),
                         category,
+                        source,
                         tags: TagInformation::default(),
                         environment: Env {
                             client: Requirement::Required,
                             server: Requirement::Required,
                         },
-                        source,
                     };
 
                     local_repository.save_component(&component)?;
