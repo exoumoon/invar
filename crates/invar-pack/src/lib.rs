@@ -72,11 +72,11 @@ impl Pack {
 
         for component in components {
             if let Source::Local(local_component) = &component.source {
-                let local_file_contents = std::fs::read_to_string(&local_component.path)?;
+                let local_file_contents = std::fs::read(&local_component.path)?;
                 let runtime_path = PathBuf::from(component.runtime_path());
                 let runtime_path = runtime_path.to_string_lossy();
                 mrpack.start_file(format!("{COMMON_OVERRIDES_DIR}/{runtime_path}"), options)?;
-                mrpack.write_all(local_file_contents.as_bytes())?;
+                mrpack.write_all(&local_file_contents)?;
             }
         }
 
