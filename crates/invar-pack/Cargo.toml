@@ -1,7 +1,7 @@
 [package]
 name = "invar-pack"
 version = "0.6.0"
-edition = "2021"
+edition = "2024"
 authors = ["mxxntype <59417007+mxxntype@users.noreply.github.com>"]
 homepage = "https://github.com/exoumoon/invar"
 license-file = "../../LICENSE"

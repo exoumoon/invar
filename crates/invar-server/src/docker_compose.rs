@@ -185,7 +185,7 @@ impl Server for DockerCompose {
             extensions: HashMap::default(),
         };
 
-        let manifest_path = <Self as PersistedEntity>::FILE_PATH;
+        let manifest_path = Self::FILE_PATH;
         if std::fs::exists(manifest_path)? {
             tracing::warn!("Server is already set up. Delete {manifest_path:?} for re-setup",);
             return Err(SetupError::AlreadySetUp);
@@ -205,13 +205,7 @@ impl Server for DockerCompose {
         }
 
         let status = std::process::Command::new("docker")
-            .args([
-                "compose",
-                "--file",
-                <Self as PersistedEntity>::FILE_PATH,
-                "up",
-                "--detach",
-            ])
+            .args(["compose", "--file", Self::FILE_PATH, "up", "--detach"])
             .status()?;
         if let Some(status_code) = status.code() {
             match status_code {
@@ -230,12 +224,7 @@ impl Server for DockerCompose {
         }
 
         let status = std::process::Command::new("docker")
-            .args([
-                "compose",
-                "--file",
-                <Self as PersistedEntity>::FILE_PATH,
-                "down",
-            ])
+            .args(["compose", "--file", Self::FILE_PATH, "down"])
             .status()?;
         if let Some(status_code) = status.code() {
             match status_code {

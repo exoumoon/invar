@@ -8,23 +8,23 @@ use std::{fs, io};
 
 use clap::{CommandFactory, Parser};
 use cli::{BackupAction, ServerAction};
+use color_eyre::Section;
 use color_eyre::eyre::Report;
 use color_eyre::owo_colors::OwoColorize;
-use color_eyre::Section;
 use eyre::{Context, ContextCompat};
 use inquire::validator::{StringValidator, Validation};
 use invar_component::{
     Category, Component, Env, Id, LocalComponent, RemoteComponent, Requirement, RuntimeDirectory,
     Source, TagInformation,
 };
+use invar_pack::Pack;
 use invar_pack::instance::version::MinecraftVersion;
 use invar_pack::instance::{Instance, Loader};
 use invar_pack::settings::Settings;
-use invar_pack::Pack;
 use invar_repository::persist::PersistedEntity;
 use invar_repository::{LocalRepository, ModrinthRepository};
 use invar_server::docker_compose::DockerCompose;
-use invar_server::{backup, Server};
+use invar_server::{Server, backup};
 use itertools::Itertools;
 use semver::Version;
 use strum::IntoEnumIterator;
@@ -204,7 +204,7 @@ fn run(options: Options) -> Result<(), Report> {
                     local_repository.save_component(&component)?;
 
                     if component.source.is_local() {
-                        let pack_file = <Pack as PersistedEntity>::FILE_PATH;
+                        let pack_file = Pack::FILE_PATH;
                         tracing::info!(?component.category, "Component entry registered in {pack_file}");
                     } else {
                         let component_file = local_repository.component_path(&component);
@@ -303,6 +303,7 @@ fn backup_gc(options: &Options) -> Result<(), Report> {
     Ok(())
 }
 
+#[expect(clippy::equatable_if_let, reason = "looks ugly")]
 fn setup_pack(
     name: Option<String>,
     minecraft_version: Option<Version>,
@@ -310,18 +311,18 @@ fn setup_pack(
     loader_version: Option<Version>,
     overwrite: bool,
 ) -> Result<(), Report> {
-    if !overwrite && fs::exists(<Pack as PersistedEntity>::FILE_PATH).is_ok_and(|exists| exists) {
-        let confirmed = inquire::Confirm::new(
-            "A pack already exists in this directory, are you sure you wish to overwrite it with a new one?",
-        )
-        .with_placeholder("yes")
-        .prompt()
-        .unwrap_or(false);
-
-        if !confirmed {
-            std::process::exit(0);
-        }
+    if !overwrite
+        && let message = "A pack already exists in this directory, are you sure you wish to overwrite it with a new one?"
+        && let Ok(true) = fs::exists(Pack::FILE_PATH)
+        && let false = inquire::Confirm::new(message)
+            .with_placeholder("yes/no")
+            .prompt()
+            .unwrap_or(false)
+    {
+        tracing::info!("Pack overwrite not confirmed, exiting");
+        return Ok(());
     }
+
     let name = name.unwrap_or_else(|| {
         inquire::Text::new("Modpack name:")
             .with_validator(non_empty_validator("Please enter a non-empty name"))
@@ -411,7 +412,7 @@ fn setup_pack(
 fn install_tracing_layer() -> Result<(), Report> {
     use tracing_error::ErrorLayer;
     use tracing_subscriber::prelude::*;
-    use tracing_subscriber::{fmt, EnvFilter};
+    use tracing_subscriber::{EnvFilter, fmt};
 
     color_eyre::install()?;
 
