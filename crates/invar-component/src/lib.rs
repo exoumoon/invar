@@ -181,6 +181,7 @@ impl LocalComponentEntry {
 )]
 #[serde(rename_all = "camelCase")]
 pub enum Category {
+    #[serde(alias = "plugin" /* FIXME: this is a dirty fucking stub */)]
     Mod,
     Resourcepack,
     #[serde(alias = "shaderpack")]
