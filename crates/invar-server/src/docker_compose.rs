@@ -176,6 +176,7 @@ impl Server for DockerCompose {
         )]);
 
         let manifest = Compose {
+            includes: None,
             version: None,
             services: docker_compose_types::Services(services),
             volumes: docker_compose_types::TopLevelVolumes::default(),
@@ -183,6 +184,7 @@ impl Server for DockerCompose {
             service: None,
             secrets: None,
             extensions: HashMap::default(),
+            name: None,
         };
 
         let manifest_path = Self::FILE_PATH;
