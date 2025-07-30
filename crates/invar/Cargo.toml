@@ -1,11 +1,11 @@
 [package]
 name = "invar"
-description = "CLI management tool for modded Minecraft servers"
-version = "0.6.0"
-edition = "2024"
-authors = ["mxxntype <59417007+mxxntype@users.noreply.github.com>"]
-homepage = "https://github.com/exoumoon/invar"
-license-file = "LICENSE"
+description.workspace = true
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+repository.workspace = true
+license-file.workspace = true
 
 [dependencies]
 clap = { version = "4.5.17", features = ["derive", "color"] }
@@ -15,10 +15,10 @@ color-eyre = "0.6.3"
 eyre = "0.6.12"
 heck = "0.5.0"
 inquire = "0.7.5"
-invar-component = { version = "0.1.0", path = "../invar-component" }
-invar-pack = { version = "0.6.0", path = "../invar-pack" }
-invar-repository = { version = "0.1.0", path = "../invar-repository" }
-invar-server = { version = "0.1.0", path = "../invar-server" }
+invar-component = { path = "../invar-component" }
+invar-pack = { path = "../invar-pack" }
+invar-repository = { path = "../invar-repository" }
+invar-server = { path = "../invar-server" }
 itertools.workspace = true
 semver = { version = "1.0.23", features = ["serde"] }
 serde = { version = "1.0.210", features = ["derive"] }

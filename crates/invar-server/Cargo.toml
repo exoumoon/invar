@@ -1,7 +1,11 @@
 [package]
 name = "invar-server"
-version = "0.1.0"
-edition = "2024"
+description.workspace = true
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+repository.workspace = true
+license-file.workspace = true
 
 [dependencies]
 bon = "3.3.2"
@@ -13,8 +17,8 @@ docker-compose-types = { version = "0.15.0", default-features = false, features 
 ] }
 eyre = "0.6.12"
 indoc = "2.0.5"
-invar-pack = { version = "0.6.0", path = "../invar-pack" }
-invar-repository = { version = "0.1.0", path = "../invar-repository" }
+invar-pack = { path = "../invar-pack" }
+invar-repository = { path = "../invar-repository" }
 itertools = "0.14.0"
 serde = { version = "1.0.217", features = ["derive"] }
 strum.workspace = true

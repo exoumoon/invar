@@ -10,6 +10,14 @@ members = [
     "crates/invar-server",
 ]
 
+[workspace.package]
+edition = "2024"
+version = "0.6.0"
+authors = ["mxxntype <59417007+mxxntype@users.noreply.github.com>"]
+description = "CLI management tool for modded Minecraft servers"
+repository = "https://github.com/exoumoon/invar"
+license-file = "./LICENSE"
+
 [profile.dev]
 codegen-units = 512
 codegen-backend = "cranelift"

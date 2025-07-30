@@ -42,6 +42,7 @@ fn main() -> Result<(), Report> {
     run(options)
 }
 
+#[expect(clippy::too_many_lines)]
 #[instrument]
 fn run(options: Options) -> Result<(), Report> {
     let modrinth_repository = LazyCell::new(ModrinthRepository::new);
