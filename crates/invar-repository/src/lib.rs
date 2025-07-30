@@ -4,6 +4,7 @@ use invar_pack::Pack;
 
 use crate::local::persist::PersistedEntity;
 
+mod git;
 mod local;
 mod modrinth;
 pub use local::*;

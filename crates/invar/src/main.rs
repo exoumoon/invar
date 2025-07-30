@@ -30,7 +30,7 @@ use semver::Version;
 use strum::IntoEnumIterator;
 use tracing::instrument;
 
-use crate::cli::{ComponentAction, Options, PackAction, Subcommand};
+use crate::cli::{ComponentAction, Options, PackAction, RepoAction, Subcommand};
 
 const DEFAULT_PACK_VERSION: Version = Version::new(0, 1, 0);
 const VERSION_WARNING: &str = "Version verification is not implemented. Entering a non-existent version may result in an unusable modpack.";
@@ -61,7 +61,7 @@ fn run(options: Options) -> Result<(), Report> {
             }
             PackAction::SetupDirectories => {
                 let local_repository = LocalRepository::open_at_git_root()?;
-                local_repository.setup_directories()?;
+                local_repository.setup()?;
                 Ok(())
             }
             PackAction::Setup {
@@ -261,6 +261,15 @@ fn run(options: Options) -> Result<(), Report> {
             }
         }
 
+        Subcommand::Repo { action } => match action {
+            RepoAction::Show => {
+                let repo = LocalRepository::open_at_git_root()?;
+                eprintln!("root_directory: {}", repo.root_directory.display());
+                eprintln!("pack:\n{:#?}", repo.pack);
+                Ok(())
+            }
+        },
+
         Subcommand::Completions { shell } => {
             let mut command = Options::command();
             let bin_name = env!("CARGO_CRATE_NAME");
@@ -380,8 +389,8 @@ fn setup_pack(
 
     pack.write()?;
 
-    let local_repo = LocalRepository::open_at_git_root()?;
-    local_repo.setup_directories()?;
+    let local_repo = LocalRepository::open(".")?;
+    local_repo.setup()?;
 
     Ok(())
 }

@@ -6,16 +6,22 @@ use invar_component::{
     TagInformation,
 };
 use invar_pack::Pack;
+use invar_pack::settings::VcsMode;
 use persist::PersistedEntity;
 use strum::IntoEnumIterator;
 use walkdir::WalkDir;
 
 pub mod persist;
 
-#[derive(Debug, Clone)]
 pub struct LocalRepository {
-    root_directory: PathBuf,
+    pub root_directory: PathBuf,
     pub pack: Pack,
+    pub vcs: Vcs,
+}
+
+pub enum Vcs {
+    None,
+    Git(git2::Repository),
 }
 
 impl LocalRepository {
@@ -39,6 +45,7 @@ impl LocalRepository {
         Ok(Self {
             root_directory,
             pack,
+            vcs: Vcs::None,
         })
     }
 
@@ -48,23 +55,21 @@ impl LocalRepository {
     ///
     /// This function will return an error if the current directory is not a
     /// part of a `git` repo, or in any cases described in [`Self::open`].
+    #[expect(clippy::missing_panics_doc, reason = "expect")]
     pub fn open_at_git_root() -> Result<Self, self::Error> {
         let cwd = std::env::current_dir()?;
-        let mut root_directory = cwd.canonicalize()?;
-        while !root_directory.read_dir()?.flatten().any(|dir| {
-            const GIT_SIGNATURE: &str = ".git";
-            let is_git = dir.file_name() == GIT_SIGNATURE;
-            let is_dir = dir.file_type().is_ok_and(|file_type| file_type.is_dir());
-            is_git && is_dir
-        }) {
-            let message = "Failed to find a Git repository in $PWD or its ancestors";
-            root_directory = root_directory
-                .parent()
-                .ok_or(io::Error::new(io::ErrorKind::NotFound, message))?
-                .to_path_buf();
-        }
+        let git_repo = git2::Repository::discover(cwd)?;
+        let git_root = git_repo
+            .path()
+            .parent()
+            .expect("The .git dir must have a parent");
 
-        Self::open(root_directory)
+        let base_repo = Self::open(git_root)?;
+        let git_repo = git2::Repository::open(".")?;
+        Ok(Self {
+            vcs: Vcs::Git(git_repo),
+            ..base_repo
+        })
     }
 
     /// Returns the list of components of this [`LocalStorage`].
@@ -181,12 +186,11 @@ impl LocalRepository {
         result
     }
 
-    /// Create the data subdirectories in the current directory.
-    ///
-    /// # Errors
-    ///
-    /// May return an I/O error if some folders are already set up.
-    pub fn setup_directories(&self) -> io::Result<()> {
+    pub fn setup(&self) -> Result<(), self::Error> {
+        let git_repo = git2::Repository::init(".")?;
+        fs::create_dir_all(Self::BACKUP_DIRECTORY)?;
+        fs::write(format!("{}/.gitignore", Self::BACKUP_DIRECTORY), "*\n")?;
+
         for directory in RuntimeDirectory::iter() {
             let mut target = self.root_directory.clone();
             target.push(PathBuf::from(directory));
@@ -199,8 +203,29 @@ impl LocalRepository {
             }
         }
 
-        fs::create_dir_all(Self::BACKUP_DIRECTORY)?;
-        fs::write(format!("{}/.gitignore", Self::BACKUP_DIRECTORY), "*\n")?;
+        match self.pack.settings.vcs_mode {
+            VcsMode::Manual => { /* do nothing */ }
+            VcsMode::TrackComponents => {
+                let mut index = git_repo.index()?;
+                index.add_all(std::iter::once("*"), git2::IndexAddOption::DEFAULT, None)?;
+                index.write()?; // NOTE: This is essentially `git add *`.
+
+                let signature = git_repo.signature()?;
+                let tree_oid = git_repo.index()?.write_tree()?;
+                let tree = git_repo.find_tree(tree_oid)?;
+
+                let commit_parents = &[];
+                let commit_message = "invar: Initial commit";
+                git_repo.commit(
+                    Some("HEAD"),
+                    &signature,
+                    &signature,
+                    commit_message,
+                    &tree,
+                    commit_parents,
+                )?;
+            }
+        }
 
         Ok(())
     }
@@ -217,6 +242,8 @@ pub enum Error {
     Persistence(#[from] persist::PersistError),
     #[error("No matching components found")]
     ComponentNotFound,
+    #[error("Failed to interact with the underlying Git repository")]
+    Git(#[from] git2::Error),
 }
 
 trait ComponentFile {

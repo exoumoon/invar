@@ -1,10 +1,10 @@
 use std::io;
 
-use clap::builder::styling::AnsiColor::{BrightBlue, White, Yellow};
 use clap::builder::Styles;
+use clap::builder::styling::AnsiColor::{BrightBlue, White, Yellow};
 use clap::{Parser, ValueEnum};
-use clap_complete::shells::{Bash, Elvish, Fish, PowerShell, Zsh};
 use clap_complete::Generator;
+use clap_complete::shells::{Bash, Elvish, Fish, PowerShell, Zsh};
 use clap_complete_nushell::Nushell;
 use invar_component::Category;
 use invar_pack::instance::Loader;
@@ -42,6 +42,12 @@ pub enum Subcommand {
     Server {
         #[command(subcommand)]
         action: ServerAction,
+    },
+
+    /// Manage the local Invar repository.
+    Repo {
+        #[command(subcommand)]
+        action: RepoAction,
     },
 
     /// Generate shell completions for this tool.
@@ -142,6 +148,12 @@ pub enum ServerAction {
         #[command(subcommand)]
         action: BackupAction,
     },
+}
+
+#[derive(clap::Subcommand, Debug)]
+pub enum RepoAction {
+    /// Read the local repository and show what Invar sees.
+    Show,
 }
 
 #[derive(clap::Subcommand, Debug)]
