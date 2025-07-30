@@ -138,12 +138,14 @@ fn run(options: Options) -> Result<(), Report> {
                                     .contains(&instance.minecraft_version.to_string());
                                 let version_loaders: HashSet<Loader> =
                                     version.loaders.iter().copied().collect();
+                                let has_unknown_loader = version.loaders.contains(&Loader::Other);
                                 let has_supported_loader = instance
                                     .allowed_loaders()
                                     .intersection(&version_loaders)
                                     .count()
                                     >= 1;
-                                is_for_correct_version && has_supported_loader
+                                is_for_correct_version
+                                    && (has_supported_loader || has_unknown_loader)
                             })
                             .sorted_unstable_by_key(|version| version.date_published)
                             .rev()
