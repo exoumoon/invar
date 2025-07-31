@@ -89,11 +89,11 @@ fn run(options: Options) -> Result<(), Report> {
                     .sorted_by_key(|component| (component.category, component.id.clone()))
                 {
                     match category {
-                        Category::Mod => eprint!("{:>24}", id.bold().green()),
-                        Category::Resourcepack => eprint!("{:>24}", id.bold().purple()),
-                        Category::Shader => eprint!("{:>24}", id.bold().cyan()),
-                        Category::Datapack => eprint!("{:>24}", id.bold().red()),
-                        Category::Config => eprint!("{:>24}", id.bold().yellow()),
+                        Category::Mod => eprint!("{:>32}", id.bold().green()),
+                        Category::Resourcepack => eprint!("{:>32}", id.bold().purple()),
+                        Category::Shader => eprint!("{:>32}", id.bold().cyan()),
+                        Category::Datapack => eprint!("{:>32}", id.bold().red()),
+                        Category::Config => eprint!("{:>32}", id.bold().yellow()),
                     }
 
                     eprint!(
@@ -105,10 +105,6 @@ fn run(options: Options) -> Result<(), Report> {
                             .display()
                             .bright_black(),
                     );
-
-                    if let Source::Local(LocalComponent { path }) = source {
-                        eprint!("source_file: {}", path.display().bright_black());
-                    }
 
                     eprintln!(/* line termination */);
                 }
