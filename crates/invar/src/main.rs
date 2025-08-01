@@ -117,6 +117,7 @@ fn run(options: Options) -> Result<(), Report> {
                 forced_category,
             } => {
                 let mut local_repository = LocalRepository::open_at_git_root()?;
+                let mut dependencies = vec![];
 
                 for id in ids {
                     let mut environment = Env::default();
@@ -151,12 +152,13 @@ fn run(options: Options) -> Result<(), Report> {
                         let help_msg = "Only ones with a matching MC version and loader are listed";
                         let prompt =
                             format!("Which version of {} should be added?", id.underline());
-                        let selected_version = inquire::Select::new(&prompt, versions)
+                        let mut selected_version = inquire::Select::new(&prompt, versions)
                             .with_help_message(help_msg)
                             .prompt()
                             .wrap_err("Failed to prompt for a component version")?;
 
                         environment = selected_version.environment.into();
+                        dependencies.append(&mut selected_version.dependencies);
 
                         let first_file = selected_version.files.into_iter().next().unwrap();
                         let remote_component = RemoteComponent {
