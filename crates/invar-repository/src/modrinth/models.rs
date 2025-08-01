@@ -30,7 +30,7 @@ pub struct Version {
     pub game_versions: Vec<String>,
     pub loaders: Vec<Loader>,
     pub date_published: DateTime<Utc>,
-    pub environment: Environment,
+    pub environment: Option<Environment>,
     pub files: Vec<File>,
     pub dependencies: Vec<Dependency>,
 }

@@ -1,3 +1,5 @@
+#![feature(result_option_map_or_default)]
+
 mod cli;
 
 use std::cell::LazyCell;
@@ -21,6 +23,7 @@ use invar_pack::Pack;
 use invar_pack::instance::version::MinecraftVersion;
 use invar_pack::instance::{Instance, Loader};
 use invar_pack::settings::Settings;
+use invar_repository::models::Environment;
 use invar_repository::persist::PersistedEntity;
 use invar_repository::{LocalRepository, ModrinthRepository};
 use invar_server::docker_compose::DockerCompose;
@@ -330,6 +333,7 @@ fn setup_pack(
     Ok(())
 }
 
+#[expect(clippy::too_many_lines)]
 fn add_component_from_modrinth<S>(
     local_repository: &mut LocalRepository,
     modrinth_repository: &ModrinthRepository,
@@ -431,12 +435,27 @@ where
         hashes: first_file.hashes,
     };
 
+    let category = forced_category.unwrap_or(
+        selected_version
+            .project_types
+            .into_iter()
+            .next()
+            .wrap_err("Component has no project types")?,
+    );
+
     let component = Component {
         id: Id::from(id),
-        category: forced_category
-            .unwrap_or(selected_version.project_types.into_iter().next().unwrap()),
+        category,
         tags: TagInformation::untagged(),
-        environment: selected_version.environment.into(),
+        environment: selected_version
+            .environment
+            .unwrap_or(match category {
+                Category::Resourcepack | Category::Shader => Environment::ClientOnly,
+                Category::Mod | Category::Datapack | Category::Config => {
+                    Environment::ClientAndServer
+                }
+            })
+            .into(),
         source: Source::Remote(remote_component),
     };
 

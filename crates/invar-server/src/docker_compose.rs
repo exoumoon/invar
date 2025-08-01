@@ -38,6 +38,7 @@ impl DockerCompose {
         allow_flight: bool,
         gamemode: &Gamemode,
         difficulty: &Difficulty,
+        motd: String,
     ) -> Environment {
         let kv_pairs = [
             ("EULA", SingleValue::String("TRUE".into())),
@@ -56,19 +57,18 @@ impl DockerCompose {
             ),
             ("MEMORY", SingleValue::String(format!("{memlimit_gb}G"))),
             ("USE_AIKAR_FLAGS", SingleValue::Bool(true)),
-            ("ENABLE_AUTOPAUSE", SingleValue::Bool(true)),
-            ("VIEW_DISTANCE", SingleValue::Unsigned(12)),
+            ("ENABLE_AUTOPAUSE", SingleValue::Bool(false)),
+            ("VIEW_DISTANCE", SingleValue::Unsigned(8)),
             ("MODE", SingleValue::String(gamemode.to_string())),
             ("DIFFICULTY", SingleValue::String(difficulty.to_string())),
             ("MAX_PLAYERS", SingleValue::Unsigned(max_players.into())),
-            ("MOTD", SingleValue::String("TODO".into())),
+            ("MOTD", SingleValue::String(motd)),
             ("ICON", SingleValue::String(DEFAULT_ICON_URL.into())),
             ("ALLOW_FLIGHT", SingleValue::Bool(allow_flight)),
             ("ONLINE_MODE", SingleValue::Bool(online_mode)),
             {
                 let rcon_first_connect = indoc::indoc! {"
-                        /whitelist on
-                        /whitelist add username
+                        /whitelist off
                         /op username
                     "}
                 .replace("username", operator_username);
@@ -147,17 +147,27 @@ impl Server for DockerCompose {
             "{DEFAULT_MINECRAFT_PORT}:{DEFAULT_MINECRAFT_PORT}"
         )]);
 
-        let hostname = format!("{}_server", local_repo.pack.name);
-        let image = "itzg/minecraft-server:java17".to_string();
+        let hostname = local_repo.pack.name.clone();
+        let image = "itzg/minecraft-server:java21".to_string();
+        let motd = format!(
+            "{pkg_name}/{pkg_version} | {pack_name}/{pack_version} | {mc_version}",
+            pkg_name = env!("CARGO_PKG_NAME"),
+            pkg_version = env!("CARGO_PKG_VERSION"),
+            pack_name = local_repo.pack.name,
+            pack_version = local_repo.pack.version,
+            mc_version = local_repo.pack.instance.minecraft_version,
+        );
+
         let environment = Self::environment()
             .instance(&local_repo.pack.instance)
             .operator_username("mxxntype")
-            .memlimit_gb(12)
-            .max_players(4)
+            .memlimit_gb(16)
+            .max_players(8)
             .online_mode(false)
             .allow_flight(true)
             .gamemode(&Gamemode::Survival)
             .difficulty(&Difficulty::Hard)
+            .motd(motd)
             .call();
 
         let services = HashMap::from([(
