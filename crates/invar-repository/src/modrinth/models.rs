@@ -26,6 +26,7 @@ pub struct Version {
     pub game_versions: Vec<String>,
     pub loaders: Vec<Loader>,
     pub date_published: DateTime<Utc>,
+    pub environment: Environment,
     pub files: Vec<File>,
     pub dependencies: Vec<Dependency>,
 }
@@ -48,11 +49,34 @@ pub struct Dependency {
     pub dependency_type: Requirement,
 }
 
-#[derive(Deserialize, Debug, Clone, Copy)]
-pub struct Metadata {
-    pub project_type: Category,
-    pub client_side: Requirement,
-    pub server_side: Requirement,
+#[derive(Deserialize, PartialEq, Eq, Debug)]
+#[serde(rename_all = "snake_case")]
+pub enum Environment {
+    ClientOnly,
+    ServerOnly,
+    #[serde(other)]
+    ClientAndServer,
+}
+
+impl From<Environment> for invar_component::Env {
+    fn from(environment: Environment) -> Self {
+        match environment {
+            Environment::ClientOnly => Self {
+                client: Requirement::Required,
+                server: Requirement::Unsupported,
+            },
+
+            Environment::ServerOnly => Self {
+                client: Requirement::Unsupported,
+                server: Requirement::Required,
+            },
+
+            Environment::ClientAndServer => Self {
+                client: Requirement::Required,
+                server: Requirement::Required,
+            },
+        }
+    }
 }
 
 impl fmt::Display for Version {

@@ -14,8 +14,8 @@ use color_eyre::owo_colors::OwoColorize;
 use eyre::{Context, ContextCompat};
 use inquire::validator::{StringValidator, Validation};
 use invar_component::{
-    Category, Component, Env, Id, LocalComponent, RemoteComponent, Requirement, RuntimeDirectory,
-    Source, TagInformation,
+    Category, Component, Env, Id, LocalComponent, RemoteComponent, RuntimeDirectory, Source,
+    TagInformation,
 };
 use invar_pack::Pack;
 use invar_pack::instance::version::MinecraftVersion;
@@ -119,6 +119,7 @@ fn run(options: Options) -> Result<(), Report> {
                 let mut local_repository = LocalRepository::open_at_git_root()?;
 
                 for id in ids {
+                    let mut environment = Env::default();
                     let source = if local {
                         let path = PathBuf::from(&id).canonicalize()?;
                         let local_component = LocalComponent { path };
@@ -154,6 +155,8 @@ fn run(options: Options) -> Result<(), Report> {
                             .with_help_message(help_msg)
                             .prompt()
                             .wrap_err("Failed to prompt for a component version")?;
+
+                        environment = selected_version.environment.into();
 
                         let first_file = selected_version.files.into_iter().next().unwrap();
                         let remote_component = RemoteComponent {
@@ -194,10 +197,7 @@ fn run(options: Options) -> Result<(), Report> {
                         category,
                         source,
                         tags: TagInformation::default(),
-                        environment: Env {
-                            client: Requirement::Required,
-                            server: Requirement::Required,
-                        },
+                        environment,
                     };
 
                     local_repository.save_component(&component)?;

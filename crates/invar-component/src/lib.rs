@@ -209,6 +209,15 @@ pub struct Env {
     pub server: Requirement,
 }
 
+impl Default for Env {
+    fn default() -> Self {
+        Self {
+            client: Requirement::Required,
+            server: Requirement::Required,
+        }
+    }
+}
+
 impl fmt::Display for Env {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let repr = match (self.client, self.server) {
