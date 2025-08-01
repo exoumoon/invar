@@ -15,9 +15,13 @@ impl Default for ModrinthRepository {
 
 impl ModrinthRepository {
     pub const USER_AGENT: &str = concat!(
-        "https://github.com/exoumoon/invar/",
+        env!("CARGO_PKG_REPOSITORY"),
+        '/',
         env!("CARGO_PKG_VERSION"),
-        " (mxxntype)"
+        ' ',
+        '(',
+        env!("CARGO_PKG_AUTHORS"),
+        ')',
     );
 
     #[expect(clippy::missing_panics_doc)]
