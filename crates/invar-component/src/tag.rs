@@ -42,7 +42,7 @@ pub struct TagInformation {
 }
 
 impl TagInformation {
-    pub const fn none() -> Self {
+    pub const fn untagged() -> Self {
         Self {
             main: None,
             others: vec![],
@@ -52,7 +52,7 @@ impl TagInformation {
 
 impl Default for TagInformation {
     fn default() -> Self {
-        Self::none()
+        Self::untagged()
     }
 }
 

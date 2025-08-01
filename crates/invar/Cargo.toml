@@ -23,6 +23,7 @@ itertools.workspace = true
 semver = { version = "1.0.23", features = ["serde"] }
 serde = { version = "1.0.210", features = ["derive"] }
 serde_yml = "0.0.12"
+spinach = "3.1.0"
 strum.workspace = true
 tracing = "0.1.41"
 tracing-error = "0.2.1"

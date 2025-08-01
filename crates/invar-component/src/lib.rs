@@ -40,6 +40,7 @@ pub use tag::*;
         PartialOrd,
         Ord,
         Display,
+        Deref,
         Clone,
         Debug,
     )
@@ -180,6 +181,7 @@ impl LocalComponentEntry {
     Debug,
 )]
 #[serde(rename_all = "camelCase")]
+#[must_use]
 pub enum Category {
     #[serde(alias = "plugin" /* FIXME: this is a dirty fucking stub */)]
     Mod,
@@ -193,6 +195,7 @@ pub enum Category {
 /// Possible relations between a [`Component`] and its loading environment.
 #[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Hash, Debug)]
 #[serde(rename_all = "camelCase")]
+#[must_use]
 pub enum Requirement {
     #[serde(alias = "incompatible")]
     Unsupported,
@@ -204,17 +207,24 @@ pub enum Requirement {
 /// Client- and server-side requirements for a [`Component`].
 #[derive(Serialize, Deserialize, Clone, PartialEq, Eq, Hash, Debug)]
 #[serde(rename_all = "camelCase")]
+#[must_use]
 pub struct Env {
     pub client: Requirement,
     pub server: Requirement,
 }
 
-impl Default for Env {
-    fn default() -> Self {
+impl Env {
+    pub const fn client_and_server() -> Self {
         Self {
             client: Requirement::Required,
             server: Requirement::Required,
         }
+    }
+}
+
+impl Default for Env {
+    fn default() -> Self {
+        Self::client_and_server()
     }
 }
 

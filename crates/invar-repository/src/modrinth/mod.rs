@@ -54,3 +54,10 @@ impl ModrinthRepository {
         Ok(version)
     }
 }
+
+// modrinth: fetch all versions
+// inquire:  pick compatible one
+// modrinth: fetch all required/optional dependencies
+// inquire:  list deps, select optional ones
+// modrinth: build components
+// local:    save components

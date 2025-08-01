@@ -8,9 +8,9 @@ use std::{fs, io};
 
 use clap::{CommandFactory, Parser};
 use cli::{BackupAction, ServerAction};
-use color_eyre::Section;
 use color_eyre::eyre::Report;
 use color_eyre::owo_colors::OwoColorize;
+use color_eyre::{Section, eyre};
 use eyre::{Context, ContextCompat};
 use inquire::validator::{StringValidator, Validation};
 use invar_component::{
@@ -27,6 +27,7 @@ use invar_server::docker_compose::DockerCompose;
 use invar_server::{Server, backup};
 use itertools::Itertools;
 use semver::Version;
+use spinach::Spinner;
 use strum::IntoEnumIterator;
 use tracing::instrument;
 
@@ -117,99 +118,32 @@ fn run(options: Options) -> Result<(), Report> {
                 forced_category,
             } => {
                 let mut local_repository = LocalRepository::open_at_git_root()?;
-                let mut dependencies = vec![];
 
                 for id in ids {
-                    let mut environment = Env::default();
-                    let source = if local {
+                    if local {
                         let path = PathBuf::from(&id).canonicalize()?;
-                        let local_component = LocalComponent { path };
-                        Source::Local(local_component)
-                    } else {
-                        let fetched_versions = modrinth_repository.fetch_versions(&id)?;
-                        let versions = fetched_versions
-                            .into_iter()
-                            .filter(|version| {
-                                let instance = &local_repository.pack.instance;
-                                let is_for_correct_version = version
-                                    .game_versions
-                                    .contains(&instance.minecraft_version.to_string());
-                                let version_loaders: HashSet<Loader> =
-                                    version.loaders.iter().copied().collect();
-                                let has_unknown_loader = version.loaders.contains(&Loader::Other);
-                                let has_supported_loader = instance
-                                    .allowed_loaders()
-                                    .intersection(&version_loaders)
-                                    .count()
-                                    >= 1;
-                                is_for_correct_version
-                                    && (has_supported_loader || has_unknown_loader)
-                            })
-                            .sorted_unstable_by_key(|version| version.date_published)
-                            .rev()
-                            .collect::<Vec<_>>();
-
-                        let help_msg = "Only ones with a matching MC version and loader are listed";
-                        let prompt =
-                            format!("Which version of {} should be added?", id.underline());
-                        let mut selected_version = inquire::Select::new(&prompt, versions)
-                            .with_help_message(help_msg)
-                            .prompt()
-                            .wrap_err("Failed to prompt for a component version")?;
-
-                        environment = selected_version.environment.into();
-                        dependencies.append(&mut selected_version.dependencies);
-
-                        let first_file = selected_version.files.into_iter().next().unwrap();
-                        let remote_component = RemoteComponent {
-                            download_url: first_file.url,
-                            file_name: PathBuf::from(first_file.name),
-                            file_size: first_file.size,
-                            version_id: selected_version.id,
-                            hashes: first_file.hashes,
+                        let parent_dir = path
+                            .parent()
+                            .and_then(Path::file_name)
+                            .and_then(OsStr::to_str)
+                            .wrap_err("Failed to figure out the component's parent dir")?
+                            .parse::<RuntimeDirectory>()
+                            .wrap_err("Failed to auto-categorize the component")?;
+                        let component = Component {
+                            id: Id::from(id),
+                            source: Source::Local(LocalComponent { path }),
+                            environment: Env::client_and_server(),
+                            tags: TagInformation::untagged(), // TODO: Figure out tags.
+                            category: forced_category.unwrap_or_else(|| Category::from(parent_dir)),
                         };
-
-                        Source::Remote(remote_component)
-                    };
-
-                    let category = match forced_category {
-                        Some(forced_category) => forced_category,
-                        None => match &source {
-                            Source::Remote(_) => {
-                                let mut project = modrinth_repository.fetch_project(&id)?;
-                                project.types.sort_unstable();
-                                project.types.into_iter().next().unwrap_or(Category::Mod)
-                            }
-                            Source::Local(local_component) => {
-                                let runtime_dir = local_component
-                                    .path
-                                    .parent()
-                                    .and_then(Path::file_name)
-                                    .and_then(OsStr::to_str)
-                                    .wrap_err("Failed to figure out the component's parent dir")?
-                                    .parse::<RuntimeDirectory>()
-                                    .wrap_err("Failed to auto-categorize the component")?;
-                                Category::from(runtime_dir)
-                            }
-                        },
-                    };
-
-                    let component = Component {
-                        id: Id::from(id),
-                        category,
-                        source,
-                        tags: TagInformation::default(),
-                        environment,
-                    };
-
-                    local_repository.save_component(&component)?;
-
-                    if component.source.is_local() {
-                        let pack_file = Pack::FILE_PATH;
-                        tracing::info!(?component.category, "Component entry registered in {pack_file}");
+                        local_repository.save_component(&component)?;
                     } else {
-                        let component_file = local_repository.component_path(&component);
-                        tracing::info!(?component.category, component.file = ?component_file, "Component saved in file");
+                        add_component_from_modrinth(
+                            &mut local_repository,
+                            &modrinth_repository,
+                            id,
+                            forced_category,
+                        )?;
                     }
                 }
 
@@ -396,28 +330,129 @@ fn setup_pack(
     Ok(())
 }
 
-// #[instrument(level = "debug", ret)]
-// fn list_components() -> Result<(), Report> {
-//     for c in &components {
-//         println!(
-//             "{type}: {prefix}{slug} [{version}]",
-//             type = c.category,
-//             slug = c.slug.yellow().bold(),
-//             version = c.file_name.bold(),
-//             prefix = match &c.tags.main {
-//                 Some(tag) => format!("{tag}/"),
-//                 None => String::new(),
-//             }
-//             .bright_yellow()
-//             .bold(),
-//         );
-//     }
-//     println!(
-//         "{count} components in total.",
-//         count = components.len().red().bold()
-//     );
-//     Ok(())
-// }
+fn add_component_from_modrinth<S>(
+    local_repository: &mut LocalRepository,
+    modrinth_repository: &ModrinthRepository,
+    id: S,
+    forced_category: Option<Category>,
+) -> Result<(), Report>
+where
+    S: AsRef<str> + Clone + std::fmt::Debug + std::fmt::Display,
+    Id: std::convert::From<S>,
+{
+    let spinner_text = &format!("Fetching {} versions from Modrinth", id.underline());
+    let spinner = Spinner::new(spinner_text).start();
+    let instance = &local_repository.pack.instance;
+    let versions = modrinth_repository
+        .fetch_versions(&id)?
+        .into_iter()
+        .filter(|version| version.is_compatible(instance))
+        .sorted_unstable_by_key(|version| version.date_published)
+        .rev()
+        .collect::<Vec<_>>();
+    spinner.text("Fetch complete").success();
+
+    if versions.is_empty() {
+        let loaders = instance.allowed_loaders();
+        let note = format!("No version is compatible with any of: {loaders:?}");
+        let suggestion = "If a cross-loader compatiblity layer like Connector is present, remember to tweak the allowed foreign loaders";
+        let report = eyre::eyre!("No compatible versions of {id:?} found")
+            .with_note(|| note)
+            .with_suggestion(|| suggestion);
+        return Err(report);
+    }
+
+    let help_msg = "Only ones with a matching MC version and loader are listed";
+    let prompt = format!("Which version of {} should be added?", id.underline());
+    let mut selected_version = inquire::Select::new(&prompt, versions)
+        .with_help_message(help_msg)
+        .prompt()
+        .wrap_err("Failed to prompt for a component version")?;
+
+    let spinner = Spinner::new("Resolving dependency names").start();
+    selected_version.dependencies.retain_mut(|dependency| {
+        let text = &format!("Resolving project ID: {}", &dependency.project_id.purple());
+        spinner.text(text).update();
+        match modrinth_repository.fetch_project(&dependency.project_id) {
+            Ok(project) => {
+                dependency.project_id = project.slug;
+                dependency.display_name = Some(project.name);
+                dependency.summary = project.summary;
+                true
+            }
+            Err(error) => {
+                tracing::warn!(?error, dependency.project_id, "Dependency resolution error");
+                false
+            }
+        }
+    });
+    spinner.text("All dependency names resolved").success();
+
+    let mut pending_dependencies = vec![];
+    pending_dependencies.extend(selected_version.required_dependencies().cloned());
+
+    let optional_deps = selected_version
+        .optional_dependencies()
+        .cloned()
+        .collect::<Vec<_>>();
+    if !optional_deps.is_empty() {
+        let message = format!("{} has optional dependencies:", id.purple());
+        let selected = inquire::MultiSelect::new(&message, optional_deps).prompt()?;
+        pending_dependencies.extend(selected);
+    }
+
+    let installed_components = local_repository.components()?;
+    for installed_dependency in pending_dependencies.extract_if(.., |dependency| {
+        installed_components
+            .iter()
+            .any(|component| *component.id == dependency.project_id)
+    }) {
+        eprintln!(
+            "- {id} ({type:?}): already installed",
+            id = installed_dependency.project_id.green().bold(),
+            type = installed_dependency.dependency_type.bold(),
+        );
+    }
+
+    for pending_dependency in &pending_dependencies {
+        eprintln!(
+            "- {id} ({type:?}): pending",
+            id = pending_dependency.project_id.red().bold(),
+            type = pending_dependency.dependency_type.bold(),
+        );
+    }
+
+    let first_file = selected_version.files.into_iter().next().unwrap();
+    let remote_component = RemoteComponent {
+        download_url: first_file.url,
+        file_name: PathBuf::from(first_file.name),
+        file_size: first_file.size,
+        version_id: selected_version.id,
+        hashes: first_file.hashes,
+    };
+
+    let component = Component {
+        id: Id::from(id),
+        category: forced_category
+            .unwrap_or(selected_version.project_types.into_iter().next().unwrap()),
+        tags: TagInformation::untagged(),
+        environment: selected_version.environment.into(),
+        source: Source::Remote(remote_component),
+    };
+
+    for pending_dependency in &pending_dependencies {
+        add_component_from_modrinth::<&str>(
+            local_repository,
+            modrinth_repository,
+            pending_dependency.project_id.as_str(),
+            forced_category,
+        )?;
+    }
+
+    local_repository.save_component(&component)?;
+
+    Ok(())
+}
 
 fn install_tracing_layer() -> Result<(), Report> {
     use tracing_error::ErrorLayer;

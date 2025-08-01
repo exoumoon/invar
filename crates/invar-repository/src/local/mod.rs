@@ -1,3 +1,5 @@
+pub mod persist;
+
 use std::path::{Path, PathBuf};
 use std::{fs, io};
 
@@ -10,8 +12,6 @@ use invar_pack::settings::VcsMode;
 use persist::PersistedEntity;
 use strum::IntoEnumIterator;
 use walkdir::WalkDir;
-
-pub mod persist;
 
 pub struct LocalRepository {
     pub root_directory: PathBuf,
