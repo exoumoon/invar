@@ -58,18 +58,19 @@ impl LocalRepository {
     #[expect(clippy::missing_panics_doc, reason = "expect")]
     pub fn open_at_git_root() -> Result<Self, self::Error> {
         let cwd = std::env::current_dir()?;
-        let git_repo = git2::Repository::discover(cwd)?;
-        let git_root = git_repo
+        let git_repository = git2::Repository::discover(cwd)?;
+        let git_root = git_repository
             .path()
             .parent()
             .expect("The .git dir must have a parent");
 
-        let base_repo = Self::open(git_root)?;
-        let git_repo = git2::Repository::open(".")?;
-        Ok(Self {
-            vcs: Vcs::Git(git_repo),
-            ..base_repo
-        })
+        let base_repository = Self::open(git_root)?;
+        let local_repository = Self {
+            vcs: Vcs::Git(git_repository),
+            ..base_repository
+        };
+
+        Ok(local_repository)
     }
 
     /// Returns the list of components of this [`LocalStorage`].
