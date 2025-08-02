@@ -134,10 +134,10 @@ impl fmt::Display for Version {
         write!(
             stream,
             "{name} [ID: {id}] - Supported loaders: {loaders:?}, released: {date}",
-            name = self.name.yellow().bold(),
+            name = self.name.purple().bold(),
             id = self.id.bold(),
-            loaders = self.loaders.bright_red(),
-            date = self.date_published.format("%b %e, %Y").bright_blue().bold()
+            loaders = self.loaders.blue(),
+            date = self.date_published.format("%b %e, %Y").cyan().bold()
         )?;
         Ok(())
     }

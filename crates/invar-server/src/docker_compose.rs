@@ -145,11 +145,10 @@ impl Server for DockerCompose {
         let hostname = local_repo.pack.name.clone();
         let image = "itzg/minecraft-server:java21".to_string();
         let motd = format!(
-            "{pkg_name}/{pkg_version} | {pack_name}/{pack_version} | {mc_version}",
+            "{pkg_name}/{pkg_version} | {pack_name} | {mc_version}",
             pkg_name = env!("CARGO_PKG_NAME"),
             pkg_version = env!("CARGO_PKG_VERSION"),
             pack_name = local_repo.pack.name,
-            pack_version = local_repo.pack.version,
             mc_version = local_repo.pack.instance.minecraft_version,
         );
 

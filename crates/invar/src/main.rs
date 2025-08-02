@@ -106,8 +106,8 @@ fn run(options: Options) -> Result<(), Report> {
                     .sorted_by_key(|component| (component.category, component.id.as_str()))
                 {
                     match category {
-                        Category::Mod => eprint!("{:>32}", id.bold().green()),
-                        Category::Resourcepack => eprint!("{:>32}", id.bold().purple()),
+                        Category::Mod => eprint!("{:>32}", id.purple().bold()),
+                        Category::Resourcepack => eprint!("{:>32}", id.bold().green()),
                         Category::Shader => eprint!("{:>32}", id.bold().cyan()),
                         Category::Datapack => eprint!("{:>32}", id.bold().red()),
                         Category::Config => eprint!("{:>32}", id.bold().yellow()),
@@ -117,7 +117,7 @@ fn run(options: Options) -> Result<(), Report> {
                         " [{source} {category}] ({environment}) runtime_path: {runtime_path:?} ",
                         source = source.cyan(),
                         category = category.blue().bold(),
-                        environment = environment.purple().italic(),
+                        environment = environment.blue(),
                         runtime_path = PathBuf::from(component.runtime_path())
                             .display()
                             .bright_black(),
@@ -359,24 +359,23 @@ where
         .prompt()
         .wrap_err("Failed to prompt for a component version")?;
 
-    let spinner = Spinner::new("Resolving dependency names").start();
-    selected_version.dependencies.retain_mut(|dependency| {
-        let text = &format!("Resolving project ID: {}", &dependency.project_id.purple());
-        spinner.text(text).update();
-        match modrinth_repository.fetch_project(&dependency.project_id) {
-            Ok(project) => {
-                dependency.project_id = project.slug;
-                dependency.display_name = Some(project.name);
-                dependency.summary = project.summary;
-                true
+    if !selected_version.dependencies.is_empty() {
+        let spinner = Spinner::new("Resolving dependency names").start();
+        selected_version.dependencies.retain_mut(|dependency| {
+            let text = &format!("Resolving project ID: {}", &dependency.project_id.purple());
+            spinner.text(text).update();
+            match modrinth_repository.fetch_project(&dependency.project_id) {
+                Err(_) => false,
+                Ok(project) => {
+                    dependency.project_id = project.slug;
+                    dependency.display_name = Some(project.name);
+                    dependency.summary = project.summary;
+                    true
+                }
             }
-            Err(error) => {
-                tracing::warn!(?error, dependency.project_id, "Dependency resolution error");
-                false
-            }
-        }
-    });
-    spinner.text("All dependency names resolved").success();
+        });
+        spinner.text("Dependency names resolved").success();
+    }
 
     let mut pending_dependencies = vec![];
     pending_dependencies.extend(selected_version.required_dependencies().cloned());

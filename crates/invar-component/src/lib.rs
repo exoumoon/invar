@@ -234,10 +234,10 @@ impl fmt::Display for Env {
             (
                 Requirement::Required | Requirement::Optional,
                 Requirement::Required | Requirement::Optional,
-            ) => "client/server",
+            ) => "client+server",
             (Requirement::Optional | Requirement::Required, Requirement::Unsupported) => "client",
             (Requirement::Unsupported, Requirement::Required | Requirement::Optional) => "server",
-            (Requirement::Unsupported, Requirement::Unsupported) => "wtf",
+            (Requirement::Unsupported, Requirement::Unsupported) => "unsupported?",
         };
         write!(f, "{repr}")
     }
