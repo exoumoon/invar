@@ -1,3 +1,4 @@
+use std::ffi::OsStr;
 use std::path::PathBuf;
 
 use strum::{Display, EnumIter, EnumString};
@@ -48,9 +49,20 @@ impl From<RuntimeDirectory> for Category {
 
 impl Component {
     pub fn runtime_path(&self) -> RuntimePath {
+        let source_file_name = self.source.file_name();
         RuntimePath {
             directory: self.category.into(),
-            filename: self.source.file_name(),
+            filename: match self.category {
+                Category::Mod | Category::Datapack | Category::Config => source_file_name,
+                Category::Resourcepack | Category::Shader => PathBuf::from(format!(
+                    "{id}.{extension}",
+                    id = self.id,
+                    extension = source_file_name
+                        .extension()
+                        .and_then(OsStr::to_str)
+                        .unwrap_or("zip"),
+                )),
+            },
         }
     }
 }
