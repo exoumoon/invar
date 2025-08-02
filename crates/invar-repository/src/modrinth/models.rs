@@ -16,19 +16,19 @@ pub struct Project {
     pub name: String,
     pub summary: Option<String>,
     #[serde(rename = "project_types")]
-    pub types: Vec<Category>,
-    pub game_versions: Vec<MinecraftVersion>,
-    pub loaders: Vec<Loader>,
-    pub versions: Vec<String>,
+    pub types: HashSet<Category>,
+    pub game_versions: HashSet<MinecraftVersion>,
+    pub loaders: HashSet<Loader>,
+    pub versions: HashSet<String>,
 }
 
 #[derive(Deserialize, Debug)]
 pub struct Version {
     pub id: String,
     pub name: String,
-    pub project_types: Vec<Category>,
-    pub game_versions: Vec<String>,
-    pub loaders: Vec<Loader>,
+    pub project_types: HashSet<Category>,
+    pub game_versions: HashSet<String>,
+    pub loaders: HashSet<Loader>,
     pub date_published: DateTime<Utc>,
     pub environment: Option<Environment>,
     pub files: Vec<File>,
@@ -38,6 +38,13 @@ pub struct Version {
 impl Version {
     #[must_use]
     pub fn is_compatible(&self, instance: &Instance) -> bool {
+        let version_agnostic_project_types =
+            HashSet::from([Category::Resourcepack, Category::Shader]);
+        let is_version_agnostic = self
+            .project_types
+            .intersection(&version_agnostic_project_types)
+            .count()
+            >= 1;
         let is_for_correct_version = self
             .game_versions
             .contains(&instance.minecraft_version.to_string());
@@ -48,7 +55,8 @@ impl Version {
             .intersection(&version_loaders)
             .count()
             >= 1;
-        is_for_correct_version && (has_unknown_loader || has_supported_loader)
+        (is_version_agnostic || is_for_correct_version)
+            && (has_unknown_loader || has_supported_loader)
     }
 
     pub fn required_dependencies(&self) -> impl Iterator<Item = &Dependency> {
