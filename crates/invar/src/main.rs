@@ -61,9 +61,20 @@ fn run(options: Options) -> Result<(), Report> {
             PackAction::Export => {
                 let local_repository = LocalRepository::open_at_git_root()?;
                 let components = local_repository.components()?;
+                let modpack_file_path = local_repository.modpack_file_path()?;
                 local_repository
                     .pack
-                    .export(components, &local_repository.modpack_file_name()?)?;
+                    .export(components, &modpack_file_path)?;
+                #[cfg(unix)]
+                {
+                    let link_path = format!(
+                        "{export_directory}/{pack_name}-latest.mrpack",
+                        export_directory = LocalRepository::EXPORT_DIRECTORY,
+                        pack_name = local_repository.pack.name,
+                    );
+                    let _ = std::fs::remove_file(&link_path);
+                    std::os::unix::fs::symlink(modpack_file_path.canonicalize()?, link_path)?;
+                }
                 Ok(())
             }
             PackAction::SetupDirectories => {

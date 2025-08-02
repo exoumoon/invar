@@ -23,8 +23,7 @@ impl LocalRepository {
     pub const COMPONENT_FILE_EXTENSION: &str = "yml";
     pub const COMPONENT_FILE_SUFFIX: &str = "invar";
 
-    pub const BACKUP_DIRECTORY: &str = ".backups";
-    pub const BACKUP_DIRECTORY_SEP: char = '_';
+    pub const EXPORT_DIRECTORY: &str = "export";
 
     /// "Open" a local repository in `root_directory`.
     ///
@@ -185,8 +184,9 @@ impl LocalRepository {
 
     pub fn setup(&self) -> Result<(), self::Error> {
         let git_repo = git2::Repository::init(".")?;
-        fs::create_dir_all(Self::BACKUP_DIRECTORY)?;
-        fs::write(format!("{}/.gitignore", Self::BACKUP_DIRECTORY), "*\n")?;
+
+        fs::create_dir_all(Self::EXPORT_DIRECTORY)?;
+        fs::write(format!("{}/.gitignore", Self::EXPORT_DIRECTORY), "*\n")?;
 
         for directory in RuntimeDirectory::iter() {
             let mut target = self.root_directory.clone();
@@ -227,11 +227,12 @@ impl LocalRepository {
         Ok(())
     }
 
-    pub fn modpack_file_name(&self) -> Result<PathBuf, git2::Error> {
+    pub fn modpack_file_path(&self) -> Result<PathBuf, git2::Error> {
         let current_local_time = chrono::Local::now().format("%Y%m%d-%H%M");
         let commit_hash = self.git_repository.head()?.peel_to_commit()?.id();
         let modpack_file_name = format!(
-            "{pack_name}-v{pack_version}-{current_local_time}-{commit_hash}.mrpack",
+            "{export_directory}/{pack_name}-v{pack_version}-{current_local_time}-{commit_hash}.mrpack",
+            export_directory = Self::EXPORT_DIRECTORY,
             pack_name = self.pack.name,
             pack_version = self.pack.version,
             commit_hash = &commit_hash.to_string()[..7],

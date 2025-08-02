@@ -1297,6 +1297,7 @@ version = "0.6.0"
 dependencies = [
  "bon",
  "docker-compose-types",
+ "git2",
  "indoc",
  "invar-pack",
  "invar-repository",
