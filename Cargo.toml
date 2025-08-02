@@ -19,7 +19,7 @@ repository = "https://github.com/exoumoon/invar"
 license-file = "./LICENSE"
 
 [profile.dev]
-codegen-units = 512
+codegen-units = 256
 codegen-backend = "cranelift"
 
 [profile.release]
