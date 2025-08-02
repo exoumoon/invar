@@ -23,6 +23,15 @@ pub struct RuntimePath {
     filename: PathBuf,
 }
 
+impl RuntimePath {
+    pub const fn new(directory: RuntimeDirectory, filename: PathBuf) -> Self {
+        Self {
+            directory,
+            filename,
+        }
+    }
+}
+
 impl From<Category> for RuntimeDirectory {
     fn from(category: Category) -> Self {
         match category {
@@ -49,21 +58,23 @@ impl From<RuntimeDirectory> for Category {
 
 impl Component {
     pub fn runtime_path(&self) -> RuntimePath {
+        let directory = RuntimeDirectory::from(self.category);
         let source_file_name = self.source.file_name();
-        RuntimePath {
-            directory: self.category.into(),
-            filename: match self.category {
-                Category::Mod | Category::Datapack | Category::Config => source_file_name,
-                Category::Resourcepack | Category::Shader => PathBuf::from(format!(
-                    "{id}.{extension}",
-                    id = self.id,
-                    extension = source_file_name
-                        .extension()
-                        .and_then(OsStr::to_str)
-                        .unwrap_or("zip"),
-                )),
-            },
-        }
+        let id_only_name = format!(
+            "{id}.{extension}",
+            id = self.id,
+            extension = source_file_name
+                .extension()
+                .and_then(OsStr::to_str)
+                .unwrap_or("zip"),
+        );
+
+        let filename = match self.category {
+            Category::Mod | Category::Datapack | Category::Config => source_file_name,
+            Category::Resourcepack | Category::Shader => PathBuf::from(id_only_name),
+        };
+
+        RuntimePath::new(directory, filename)
     }
 }
 
