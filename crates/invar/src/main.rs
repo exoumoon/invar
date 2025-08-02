@@ -205,18 +205,6 @@ fn run(options: Options) -> Result<(), Report> {
             ServerAction::Setup => DockerCompose::setup()
                 .map(|_| ())
                 .wrap_err("Failed to setup the server"),
-            ServerAction::Start => DockerCompose::read()?
-                .start()
-                .wrap_err("Failed to start the server"),
-            ServerAction::Stop => DockerCompose::read()?
-                .stop()
-                .wrap_err("Failed to stop the server"),
-            ServerAction::Status => {
-                let error = eyre::eyre!("Checking the status of the server isn't yet implemented")
-                    .with_note(|| "This will be implemented in a future version of Invar.")
-                    .with_suggestion(|| "`docker compose ps` may have what you need.");
-                Err(error)
-            }
         },
 
         Subcommand::Repo { action } => match action {

@@ -133,15 +133,6 @@ pub enum ComponentAction {
 pub enum ServerAction {
     /// Prepare for the first start of the server.
     Setup,
-
-    /// Start the server, do nothing if it is already running.
-    Start,
-
-    /// Stop the server, do nothing if it is already stopped.
-    Stop,
-
-    /// Report the status of the server.
-    Status,
 }
 
 #[derive(clap::Subcommand, Debug)]
