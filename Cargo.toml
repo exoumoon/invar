@@ -52,7 +52,6 @@ git2 = "0.20.2"
 heck = "0.5.0"
 indoc = "2.0.5"
 inquire = "0.7.5"
-invar-component = { path = "../invar-component" }
 itertools = "0.14.0"
 nutype = { version = "0.6.2", features = ["serde"] }
 reqwest = { version = "0.12.12", features = ["blocking", "json"] }
