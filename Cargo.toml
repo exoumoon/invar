@@ -41,8 +41,39 @@ match_bool = { level = "allow", priority = 1 }
 
 [workspace.dependencies]
 bon = "3.6.0"
+chrono = { version = "0.4.41", features = ["now", "serde"] }
+clap = { version = "4.5.17", features = ["derive", "color"] }
+clap_complete = "4.5.42"
+clap_complete_nushell = "4.5.5"
+color-eyre = "0.6.3"
+copy_dir = "0.1.3"
+eyre = "0.6.12"
 git2 = "0.20.2"
+heck = "0.5.0"
+indoc = "2.0.5"
+inquire = "0.7.5"
+invar-component = { path = "../invar-component" }
 itertools = "0.14.0"
+nutype = { version = "0.6.2", features = ["serde"] }
+reqwest = { version = "0.12.12", features = ["blocking", "json"] }
+rstest = "0.24.0"
+semver = { version = "1.0.23", features = ["serde"] }
+serde = { version = "1.0.210", features = ["derive"] }
 serde_json = "1.0.140"
+serde_with = { version = "3.12.0", features = ["hex"] }
+serde_yml = "0.0.12"
+spinach = "3.1.0"
 strum = { version = "0.27.1", features = ["derive"] }
+tempdir = "0.3.7"
+thiserror = "2.0.11"
+tracing = "0.1.41"
+tracing-error = "0.2.1"
+tracing-subscriber = { version = "0.3.19", features = ["fmt", "env-filter"] }
+url = { version = "2.5.2", features = ["serde"] }
+walkdir = "2.5.0"
 zip = "4.1.0"
+
+[workspace.dependencies.docker-compose-types]
+version = "0.19.0"
+default-features = false
+features = ["yml"]

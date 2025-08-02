@@ -8,26 +8,23 @@ repository.workspace = true
 license-file.workspace = true
 
 [dependencies]
-chrono = { version = "0.4.39", features = ["serde"] }
-color-eyre = "0.6.3"
-eyre = "0.6.12"
+chrono.workspace = true
+color-eyre.workspace = true
 git2.workspace = true
-inquire = "0.7.5"
-invar-component = { path = "../invar-component" }
-invar-pack = { path = "../invar-pack" }
-itertools.workspace = true
-reqwest = { version = "0.12.12", features = ["blocking", "json"] }
-semver = { version = "1.0.24", features = ["serde"] }
-serde = { version = "1.0.217", features = ["derive"] }
-serde_yml = "0.0.12"
+invar-component = { version = "0.6.0", path = "../invar-component" }
+invar-pack = { version = "0.6.0", path = "../invar-pack" }
+reqwest.workspace = true
+semver.workspace = true
+serde.workspace = true
+serde_yml.workspace = true
 strum.workspace = true
-thiserror = "2.0.11"
-url = { version = "2.5.4", features = ["serde"] }
-walkdir = "2.5.0"
+thiserror.workspace = true
+url.workspace = true
+walkdir.workspace = true
 
 [dev-dependencies]
-rstest = "0.24.0"
-tempdir = "0.3.7"
+rstest.workspace = true
+tempdir.workspace = true
 
 [lints]
 workspace = true

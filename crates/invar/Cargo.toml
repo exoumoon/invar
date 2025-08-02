@@ -8,27 +8,23 @@ repository.workspace = true
 license-file.workspace = true
 
 [dependencies]
-clap = { version = "4.5.17", features = ["derive", "color"] }
-clap_complete = "4.5.42"
-clap_complete_nushell = "4.5.5"
-color-eyre = "0.6.3"
-eyre = "0.6.12"
-heck = "0.5.0"
-inquire = "0.7.5"
-invar-component = { path = "../invar-component" }
-invar-pack = { path = "../invar-pack" }
-invar-repository = { path = "../invar-repository" }
-invar-server = { path = "../invar-server" }
+clap.workspace = true
+clap_complete.workspace = true
+clap_complete_nushell.workspace = true
+color-eyre.workspace = true
+inquire.workspace = true
+invar-component = { version = "0.6.0", path = "../invar-component" }
+invar-pack = { version = "0.6.0", path = "../invar-pack" }
+invar-repository = { version = "0.6.0", path = "../invar-repository" }
+invar-server = { version = "0.6.0", path = "../invar-server" }
 itertools.workspace = true
-semver = { version = "1.0.23", features = ["serde"] }
-serde = { version = "1.0.210", features = ["derive"] }
-serde_yml = "0.0.12"
-spinach = "3.1.0"
+semver.workspace = true
+serde_yml.workspace = true
+spinach.workspace = true
 strum.workspace = true
-tracing = "0.1.41"
-tracing-error = "0.2.1"
-tracing-subscriber = { version = "0.3.19", features = ["fmt", "env-filter"] }
-url = { version = "2.5.2", features = ["serde"] }
+tracing.workspace = true
+tracing-error.workspace = true
+tracing-subscriber.workspace = true
 
 [lints]
 workspace = true

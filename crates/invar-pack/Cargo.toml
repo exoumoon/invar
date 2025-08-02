@@ -9,20 +9,19 @@ license-file.workspace = true
 
 [dependencies]
 bon.workspace = true
-chrono = { version = "0.4.41", features = ["now"] }
-clap = { version = "4.5.26", features = ["derive"] }
-invar-component = { path = "../invar-component" }
-semver = { version = "1.0.24", features = ["serde"] }
-serde = { version = "1.0.217", features = ["derive"] }
+clap.workspace = true
+invar-component = { version = "0.6.0", path = "../invar-component" }
+semver.workspace = true
+serde.workspace = true
 serde_json.workspace = true
 strum.workspace = true
-thiserror = "2.0.11"
-url = { version = "2.5.4", features = ["serde"] }
+thiserror.workspace = true
+url.workspace = true
 zip.workspace = true
 
 [dev-dependencies]
-rstest = "0.24.0"
-color-eyre = "0.6.3"
+rstest.workspace = true
+color-eyre.workspace = true
 
 [lints]
 workspace = true
