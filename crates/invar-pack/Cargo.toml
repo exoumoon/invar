@@ -9,6 +9,7 @@ license-file.workspace = true
 
 [dependencies]
 bon.workspace = true
+chrono = { version = "0.4.41", features = ["now"] }
 clap = { version = "4.5.26", features = ["derive"] }
 invar-component = { path = "../invar-component" }
 semver = { version = "1.0.24", features = ["serde"] }

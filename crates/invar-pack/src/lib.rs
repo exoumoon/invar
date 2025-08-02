@@ -8,8 +8,8 @@ use invar_component::{Component, LocalComponentEntry, Source};
 use semver::Version;
 use serde::{Deserialize, Serialize};
 use settings::Settings;
-use zip::write::SimpleFileOptions;
 use zip::ZipWriter;
+use zip::write::SimpleFileOptions;
 
 use crate::index::overrides::COMMON_OVERRIDES_DIR;
 use crate::instance::Instance;
@@ -33,12 +33,7 @@ pub struct Pack {
 impl Pack {
     pub const INDEX_FILE_NAME: &'static str = "modrinth.index.json";
 
-    #[must_use]
-    pub fn modpack_filename(&self) -> PathBuf {
-        format!("{}.mrpack", self.name).into()
-    }
-
-    pub fn export<I>(&self, components: I) -> Result<(), ExportError>
+    pub fn export<I>(&self, components: I, modpack_file_path: &PathBuf) -> Result<(), ExportError>
     where
         I: IntoIterator<Item = Component> + Clone,
     {
@@ -63,7 +58,7 @@ impl Pack {
         let index = index::Index::from_pack_and_files(self, files.as_slice());
         let json = serde_json::to_string(&index)?;
 
-        let file = File::create(self.modpack_filename())?;
+        let file = File::create(modpack_file_path)?;
         let options = SimpleFileOptions::default();
         let mut mrpack = ZipWriter::new(file);
 

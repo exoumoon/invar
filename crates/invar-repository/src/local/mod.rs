@@ -16,12 +16,7 @@ use walkdir::WalkDir;
 pub struct LocalRepository {
     pub root_directory: PathBuf,
     pub pack: Pack,
-    pub vcs: Vcs,
-}
-
-pub enum Vcs {
-    None,
-    Git(git2::Repository),
+    pub git_repository: git2::Repository,
 }
 
 impl LocalRepository {
@@ -40,12 +35,13 @@ impl LocalRepository {
     /// information on that.
     pub fn open(root_directory: impl AsRef<Path>) -> Result<Self, self::Error> {
         let root_directory = root_directory.as_ref().canonicalize()?;
+        let git_repository = git2::Repository::open(&root_directory)?;
         std::env::set_current_dir(&root_directory)?;
         let pack = Pack::read()?;
         Ok(Self {
             root_directory,
             pack,
-            vcs: Vcs::None,
+            git_repository,
         })
     }
 
@@ -66,7 +62,7 @@ impl LocalRepository {
 
         let base_repository = Self::open(git_root)?;
         let local_repository = Self {
-            vcs: Vcs::Git(git_repository),
+            git_repository,
             ..base_repository
         };
 
@@ -229,6 +225,19 @@ impl LocalRepository {
         }
 
         Ok(())
+    }
+
+    pub fn modpack_file_name(&self) -> Result<PathBuf, git2::Error> {
+        let current_local_time = chrono::Local::now().format("%Y%m%d-%H%M");
+        let commit_hash = self.git_repository.head()?.peel_to_commit()?.id();
+        let modpack_file_name = format!(
+            "{pack_name}-v{pack_version}-{current_local_time}-{commit_hash}.mrpack",
+            pack_name = self.pack.name,
+            pack_version = self.pack.version,
+            commit_hash = &commit_hash.to_string()[..7],
+        );
+
+        Ok(PathBuf::from(modpack_file_name))
     }
 }
 

@@ -61,7 +61,9 @@ fn run(options: Options) -> Result<(), Report> {
             PackAction::Export => {
                 let local_repository = LocalRepository::open_at_git_root()?;
                 let components = local_repository.components()?;
-                local_repository.pack.export(components)?;
+                local_repository
+                    .pack
+                    .export(components, &local_repository.modpack_file_name()?)?;
                 Ok(())
             }
             PackAction::SetupDirectories => {
@@ -81,16 +83,16 @@ fn run(options: Options) -> Result<(), Report> {
         Subcommand::Component { action } => match action {
             ComponentAction::List => {
                 let local_repository = LocalRepository::open_at_git_root()?;
-                for ref component @ Component {
-                    ref id,
-                    ref category,
-                    ref environment,
-                    ref source,
+                let components = local_repository.components()?;
+                for component @ Component {
+                    id,
+                    category,
+                    environment,
+                    source,
                     tags: _,
-                } in local_repository
-                    .components()?
-                    .into_iter()
-                    .sorted_by_key(|component| (component.category, component.id.clone()))
+                } in components
+                    .iter()
+                    .sorted_by_key(|component| (component.category, component.id.as_str()))
                 {
                     match category {
                         Category::Mod => eprint!("{:>32}", id.bold().green()),
@@ -112,6 +114,23 @@ fn run(options: Options) -> Result<(), Report> {
 
                     eprintln!(/* line termination */);
                 }
+
+                let total = components.len();
+                let remote = components
+                    .iter()
+                    .filter(|component| component.source.is_remote())
+                    .count();
+                let local = components
+                    .iter()
+                    .filter(|component| component.source.is_local())
+                    .count();
+                eprintln!(
+                    "{total:>35} total components ({remote} remote, {local} local)",
+                    total = total.bold(),
+                    remote = remote.bold(),
+                    local = local.bold(),
+                );
+
                 Ok(())
             }
 
@@ -344,6 +363,16 @@ where
     S: AsRef<str> + Clone + std::fmt::Debug + std::fmt::Display,
     Id: std::convert::From<S>,
 {
+    let installed_components = local_repository.components()?;
+
+    if installed_components
+        .iter()
+        .any(|component| component.id == id.as_ref().into())
+    {
+        eprintln!("- {} is already installed", id.green().bold());
+        return Ok(());
+    }
+
     let spinner_text = &format!("Fetching {} versions from Modrinth", id.underline());
     let spinner = Spinner::new(spinner_text).start();
     let instance = &local_repository.pack.instance;
@@ -397,6 +426,7 @@ where
 
     let optional_deps = selected_version
         .optional_dependencies()
+        .sorted_unstable_by_key(|dependency| dependency.project_id.as_str())
         .cloned()
         .collect::<Vec<_>>();
     if !optional_deps.is_empty() {
@@ -405,7 +435,6 @@ where
         pending_dependencies.extend(selected);
     }
 
-    let installed_components = local_repository.components()?;
     for installed_dependency in pending_dependencies.extract_if(.., |dependency| {
         installed_components
             .iter()
@@ -459,6 +488,7 @@ where
         source: Source::Remote(remote_component),
     };
 
+    local_repository.save_component(&component)?;
     for pending_dependency in &pending_dependencies {
         add_component_from_modrinth::<&str>(
             local_repository,
@@ -467,8 +497,6 @@ where
             forced_category,
         )?;
     }
-
-    local_repository.save_component(&component)?;
 
     Ok(())
 }

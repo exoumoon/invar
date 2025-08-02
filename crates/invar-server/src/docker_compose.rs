@@ -131,7 +131,10 @@ impl Server for DockerCompose {
             // A "symlink" to our exported modpack.
             Volumes::Advanced(AdvancedVolumes {
                 source: Some({
-                    let _ = local_repo.pack.export(local_repo.components().unwrap());
+                    let _ = local_repo.pack.export(
+                        local_repo.components().unwrap(),
+                        &local_repo.modpack_file_name().unwrap(),
+                    );
                     format!("./{}.mrpack", local_repo.pack.name)
                 }),
                 target: Self::MODPACK_PATH.into(),

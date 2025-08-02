@@ -1270,6 +1270,7 @@ name = "invar-pack"
 version = "0.6.0"
 dependencies = [
  "bon",
+ "chrono",
  "clap",
  "color-eyre",
  "invar-component",
