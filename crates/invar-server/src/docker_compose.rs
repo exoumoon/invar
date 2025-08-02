@@ -81,6 +81,7 @@ impl DockerCompose {
 }
 
 #[derive(Debug, thiserror::Error)]
+#[error(transparent)]
 pub enum SetupError {
     #[error("A local server is already configured for this pack")]
     AlreadySetUp,
@@ -88,20 +89,13 @@ pub enum SetupError {
     Io(#[from] io::Error),
     #[error("Failed to interact with the local repository")]
     Repository(#[from] invar_repository::Error),
-}
-
-#[derive(Debug, thiserror::Error)]
-pub enum StartStopError {
-    #[error(transparent)]
-    ExitCode(#[from] io::Error),
-    #[error("Process terminated by signal")]
-    Terminated,
+    #[error("Failed to export the pack before setup")]
+    ExportFailed(#[from] invar_pack::ExportError),
+    Git(#[from] git2::Error),
 }
 
 impl Server for DockerCompose {
     type SetupError = self::SetupError;
-    type StartStopError = self::StartStopError;
-    type StatusError = ();
 
     fn setup() -> Result<Self, Self::SetupError> {
         let local_repo = LocalRepository::open_at_git_root()?;
@@ -109,11 +103,15 @@ impl Server for DockerCompose {
         if let Err(error) = fs::create_dir_all(DATA_VOLUME_PATH)
             && error.kind() != io::ErrorKind::AlreadyExists
         {
-            return Err(SetupError::Repository(error.into()));
+            return Err(error.into());
         }
 
+        // HACK: The must be a valid `.mrpack` for the docker volume to point to.
+        local_repo
+            .pack
+            .export(local_repo.components()?, &local_repo.modpack_file_path()?)?;
+
         let volumes = vec![
-            // Minecraft's data (all kinds of state).
             Volumes::Advanced(AdvancedVolumes {
                 source: Some(DATA_VOLUME_PATH.into()),
                 target: "/data".into(),
@@ -123,14 +121,13 @@ impl Server for DockerCompose {
                 volume: None,
                 tmpfs: None,
             }),
-            // A "symlink" to our exported modpack.
             Volumes::Advanced(AdvancedVolumes {
                 source: Some({
-                    let _ = local_repo.pack.export(
-                        local_repo.components().unwrap(),
-                        &local_repo.modpack_file_name().unwrap(),
-                    );
-                    format!("./{}.mrpack", local_repo.pack.name)
+                    format!(
+                        "{}/{}-latest.mrpack",
+                        LocalRepository::EXPORT_DIRECTORY,
+                        local_repo.pack.name
+                    )
                 }),
                 target: Self::MODPACK_PATH.into(),
                 _type: "bind".into(),
@@ -205,34 +202,7 @@ impl Server for DockerCompose {
         docker_compose
             .write()
             .map_err(invar_repository::Error::Persistence)?;
+
         Ok(docker_compose)
-    }
-
-    fn start(&self) -> Result<(), Self::StartStopError> {
-        let status = std::process::Command::new("docker")
-            .args(["compose", "--file", Self::FILE_PATH, "up", "--detach"])
-            .status()?;
-        if let Some(status_code) = status.code() {
-            match status_code {
-                0 => Ok(()),
-                error => Err(io::Error::from_raw_os_error(error).into()),
-            }
-        } else {
-            Err(StartStopError::Terminated)
-        }
-    }
-
-    fn stop(&self) -> Result<(), Self::StartStopError> {
-        let status = std::process::Command::new("docker")
-            .args(["compose", "--file", Self::FILE_PATH, "down"])
-            .status()?;
-        if let Some(status_code) = status.code() {
-            match status_code {
-                0 => Ok(()),
-                error => Err(io::Error::from_raw_os_error(error).into()),
-            }
-        } else {
-            Err(StartStopError::Terminated)
-        }
     }
 }

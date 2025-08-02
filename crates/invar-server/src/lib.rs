@@ -10,8 +10,6 @@ pub const DEFAULT_MINECRAFT_PORT: u16 = 25565;
 
 pub trait Server: fmt::Debug + Serialize + for<'de> Deserialize<'de> {
     type SetupError;
-    type StartStopError;
-    type StatusError;
 
     /// Prepare everything for the first start of the server.
     ///
@@ -19,29 +17,6 @@ pub trait Server: fmt::Debug + Serialize + for<'de> Deserialize<'de> {
     ///
     /// ...
     fn setup() -> Result<Self, Self::SetupError>;
-
-    /// Start the hosted server, do nothing if it is already running.
-    ///
-    /// # Errors
-    ///
-    /// ...
-    fn start(&self) -> Result<(), Self::StartStopError>;
-
-    /// Stop the hosted server, do nothing if it is already stopped.
-    ///
-    /// # Errors
-    ///
-    /// ...
-    fn stop(&self) -> Result<(), Self::StartStopError>;
-
-    /// Report the status of the server.
-    ///
-    /// # Errors
-    ///
-    /// ...
-    fn status(&self) -> Result<(), Self::StatusError> {
-        todo!("Querying the server's status isn't yet implemented")
-    }
 }
 
 /// The server's default `gamemode` for new players.

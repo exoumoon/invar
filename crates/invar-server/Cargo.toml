@@ -10,6 +10,7 @@ license-file.workspace = true
 [dependencies]
 bon.workspace = true
 docker-compose-types.workspace = true
+git2.workspace = true
 indoc.workspace = true
 invar-pack = { version = "0.6.0", path = "../invar-pack" }
 invar-repository = { version = "0.6.0", path = "../invar-repository" }
