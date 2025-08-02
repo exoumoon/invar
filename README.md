@@ -12,6 +12,11 @@
 
 <h3 align="center">Invar</h3>
 
+> [!TIP]
+> For a quick start, acquire an Invar binary, and just run it.
+> Thanks to `clap`, it will suggest all implemented subcommands and actions.
+> It should be fairly straightforward from there on.
+
 **Invar** is a CLI management tool for modded (or not) Minecraft servers. This project has the following goals:
 
 - Allowing you to *declaratively*[^1] build and configure Minecraft modpacks, which includes managing mods, resourcepacks, shaderpacks and datapacks[^2], while treating their configuration files as first-class citizens. I aim to implement fetching component data from both the [Modrinth][modrinth] and [CurseForge][curseforge] APIs.
