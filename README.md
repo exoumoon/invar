@@ -28,7 +28,7 @@ I try to design **Invar** to be as rugged, industrial-grade and flexible as poss
 Features include (this list will very likely get out of sync from the actual development...):
 
 - [x] Modpack creation, in the form of a `git` repository
-- [x] Source-code-style iteration & development of said modpacks:
+- [x] Source-code-style iteration & development of said modpacks:  
   **Flexible component system**
   - [x] Dependency-, version- & loader-aware [Modrinth][modrinth] interface
   - [x] Local components for cases where [Modrinth][modrinth] can't help or you've decided to go full custom
