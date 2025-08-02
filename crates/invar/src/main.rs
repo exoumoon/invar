@@ -9,7 +9,7 @@ use std::path::{Path, PathBuf};
 use std::{fs, io};
 
 use clap::{CommandFactory, Parser};
-use cli::{BackupAction, ServerAction};
+use cli::ServerAction;
 use color_eyre::eyre::Report;
 use color_eyre::owo_colors::OwoColorize;
 use color_eyre::{Section, eyre};
@@ -26,8 +26,8 @@ use invar_pack::settings::Settings;
 use invar_repository::models::Environment;
 use invar_repository::persist::PersistedEntity;
 use invar_repository::{LocalRepository, ModrinthRepository};
+use invar_server::Server;
 use invar_server::docker_compose::DockerCompose;
-use invar_server::{Server, backup};
 use itertools::Itertools;
 use semver::Version;
 use spinach::Spinner;
@@ -190,33 +190,23 @@ fn run(options: Options) -> Result<(), Report> {
             }
         },
 
-        Subcommand::Server { ref action, .. } => {
-            let local_repository = LocalRepository::open_at_git_root()?;
-            match action {
-                ServerAction::Setup => DockerCompose::setup()
-                    .map(|_| ())
-                    .wrap_err("Failed to setup the server"),
-                ServerAction::Start => DockerCompose::read()?
-                    .start(&local_repository.pack)
-                    .wrap_err("Failed to start the server"),
-                ServerAction::Stop => DockerCompose::read()?
-                    .stop(&local_repository.pack)
-                    .wrap_err("Failed to stop the server"),
-                ServerAction::Status => {
-                    let error =
-                        eyre::eyre!("Checking the status of the server isn't yet implemented")
-                            .with_note(|| "This will be implemented in a future version of Invar.")
-                            .with_suggestion(|| "`docker compose ps` may have what you need.");
-                    Err(error)
-                }
-
-                ServerAction::Backup { action } => match action {
-                    BackupAction::List => backup_list(&options),
-                    BackupAction::Create => backup_create(&local_repository.pack),
-                    BackupAction::Gc => backup_gc(&options),
-                },
+        Subcommand::Server { ref action, .. } => match action {
+            ServerAction::Setup => DockerCompose::setup()
+                .map(|_| ())
+                .wrap_err("Failed to setup the server"),
+            ServerAction::Start => DockerCompose::read()?
+                .start()
+                .wrap_err("Failed to start the server"),
+            ServerAction::Stop => DockerCompose::read()?
+                .stop()
+                .wrap_err("Failed to stop the server"),
+            ServerAction::Status => {
+                let error = eyre::eyre!("Checking the status of the server isn't yet implemented")
+                    .with_note(|| "This will be implemented in a future version of Invar.")
+                    .with_suggestion(|| "`docker compose ps` may have what you need.");
+                Err(error)
             }
-        }
+        },
 
         Subcommand::Repo { action } => match action {
             RepoAction::Show => {
@@ -235,38 +225,6 @@ fn run(options: Options) -> Result<(), Report> {
             Ok(())
         }
     }
-}
-
-#[instrument]
-fn backup_list(options: &Options) -> Result<(), Report> {
-    for backup in backup::get_all_backups()?.into_iter().rev() {
-        println!("{backup}");
-    }
-    Ok(())
-}
-
-#[instrument]
-fn backup_create(pack: &Pack) -> Result<(), Report> {
-    backup::create_new(Some("ondemand"), pack)?;
-    Ok(())
-}
-
-#[instrument]
-fn backup_gc(options: &Options) -> Result<(), Report> {
-    let gc_result = backup::gc().wrap_err("Failed to garbage-collect backups")?;
-    if gc_result.removed.is_empty() {
-        println!("All backups are fresh enough to keep.");
-    } else {
-        println!("Deleted the following backups:");
-        for deleted_backup in gc_result.removed.iter().rev() {
-            println!("{deleted_backup}");
-        }
-    }
-    println!("Remaining backups:");
-    for backup in gc_result.remaining.iter().rev() {
-        println!("{backup}");
-    }
-    Ok(())
 }
 
 #[expect(clippy::equatable_if_let, reason = "looks ugly")]

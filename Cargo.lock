@@ -373,15 +373,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "copy_dir"
-version = "0.1.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "543d1dd138ef086e2ff05e3a48cf9da045da2033d16f8538fd76b86cd49b2ca3"
-dependencies = [
- "walkdir",
-]
-
-[[package]]
 name = "core-foundation"
 version = "0.9.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1305,14 +1296,10 @@ name = "invar-server"
 version = "0.6.0"
 dependencies = [
  "bon",
- "chrono",
- "color-eyre",
- "copy_dir",
  "docker-compose-types",
  "indoc",
  "invar-pack",
  "invar-repository",
- "itertools",
  "serde",
  "strum",
  "thiserror",

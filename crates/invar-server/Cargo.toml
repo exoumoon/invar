@@ -9,14 +9,10 @@ license-file.workspace = true
 
 [dependencies]
 bon.workspace = true
-chrono.workspace = true
-color-eyre.workspace = true
-copy_dir.workspace = true
 docker-compose-types.workspace = true
 indoc.workspace = true
 invar-pack = { version = "0.6.0", path = "../invar-pack" }
 invar-repository = { version = "0.6.0", path = "../invar-repository" }
-itertools.workspace = true
 serde.workspace = true
 strum.workspace = true
 thiserror.workspace = true

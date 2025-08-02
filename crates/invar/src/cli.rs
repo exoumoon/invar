@@ -142,30 +142,12 @@ pub enum ServerAction {
 
     /// Report the status of the server.
     Status,
-
-    /// Manage backups of the server.
-    Backup {
-        #[command(subcommand)]
-        action: BackupAction,
-    },
 }
 
 #[derive(clap::Subcommand, Debug)]
 pub enum RepoAction {
     /// Read the local repository and show what Invar sees.
     Show,
-}
-
-#[derive(clap::Subcommand, Debug)]
-pub enum BackupAction {
-    /// List out all the backups created in the past.
-    List,
-
-    /// Create a new backup at this point in time.
-    Create,
-
-    /// Garbage-collect backups.
-    Gc,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, ValueEnum)]

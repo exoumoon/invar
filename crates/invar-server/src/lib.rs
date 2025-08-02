@@ -2,10 +2,8 @@
 
 use std::fmt;
 
-use invar_pack::Pack;
 use serde::{Deserialize, Serialize};
 
-pub mod backup;
 pub mod docker_compose;
 
 pub const DEFAULT_MINECRAFT_PORT: u16 = 25565;
@@ -27,14 +25,14 @@ pub trait Server: fmt::Debug + Serialize + for<'de> Deserialize<'de> {
     /// # Errors
     ///
     /// ...
-    fn start(&self, pack: &Pack) -> Result<(), Self::StartStopError>;
+    fn start(&self) -> Result<(), Self::StartStopError>;
 
     /// Stop the hosted server, do nothing if it is already stopped.
     ///
     /// # Errors
     ///
     /// ...
-    fn stop(&self, pack: &Pack) -> Result<(), Self::StartStopError>;
+    fn stop(&self) -> Result<(), Self::StartStopError>;
 
     /// Report the status of the server.
     ///

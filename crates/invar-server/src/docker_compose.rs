@@ -3,15 +3,12 @@ use std::{fs, io};
 
 use bon::bon;
 use docker_compose_types::{AdvancedVolumes, Compose, Environment, Service, SingleValue, Volumes};
-use invar_pack::Pack;
 use invar_pack::instance::Instance;
-use invar_pack::settings::BackupMode;
 use invar_repository::LocalRepository;
 use invar_repository::persist::PersistedEntity;
 use serde::{Deserialize, Serialize};
 
 use super::{DEFAULT_MINECRAFT_PORT, Difficulty, Gamemode, Server};
-use crate::backup;
 
 pub const DATA_VOLUME_PATH: &str = "server";
 pub const DEFAULT_ICON_URL: &str = "https://avatars.githubusercontent.com/u/175053991?s=200&v=4";
@@ -99,8 +96,6 @@ pub enum StartStopError {
     ExitCode(#[from] io::Error),
     #[error("Process terminated by signal")]
     Terminated,
-    #[error("Failed to create a backup of the server")]
-    BackupError(#[from] backup::Error),
 }
 
 impl Server for DockerCompose {
@@ -213,12 +208,7 @@ impl Server for DockerCompose {
         Ok(docker_compose)
     }
 
-    fn start(&self, pack: &Pack) -> Result<(), Self::StartStopError> {
-        if matches!(pack.settings.backup_mode, BackupMode::StartStop { .. }) {
-            let _new_backup = backup::create_new(Some("pre-start"), pack)?;
-            let _gc_result = backup::gc()?;
-        }
-
+    fn start(&self) -> Result<(), Self::StartStopError> {
         let status = std::process::Command::new("docker")
             .args(["compose", "--file", Self::FILE_PATH, "up", "--detach"])
             .status()?;
@@ -232,12 +222,7 @@ impl Server for DockerCompose {
         }
     }
 
-    fn stop(&self, pack: &Pack) -> Result<(), Self::StartStopError> {
-        if matches!(pack.settings.backup_mode, BackupMode::StartStop { .. }) {
-            let _new_backup = backup::create_new(Some("post-stop"), pack)?;
-            let _gc_result = backup::gc()?;
-        }
-
+    fn stop(&self) -> Result<(), Self::StartStopError> {
         let status = std::process::Command::new("docker")
             .args(["compose", "--file", Self::FILE_PATH, "down"])
             .status()?;
