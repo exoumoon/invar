@@ -346,7 +346,7 @@ where
     if versions.is_empty() {
         let loaders = instance.allowed_loaders();
         let note = format!("No version is compatible with any of: {loaders:?}");
-        let suggestion = "If a cross-loader compatiblity layer like Connector is present, remember to tweak the allowed foreign loaders";
+        let suggestion = "If a cross-loader compatibility layer like Connector is present, remember to tweak the allowed foreign loaders";
         let report = eyre::eyre!("No compatible versions of {id:?} found")
             .with_note(|| note)
             .with_suggestion(|| suggestion);
