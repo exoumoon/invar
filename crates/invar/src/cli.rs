@@ -66,19 +66,15 @@ pub enum PackAction {
         /// The name of the created modpack.
         #[arg(short, long)]
         name: Option<String>,
-
         /// What game version to build upon.
         #[arg(long)]
         minecraft_version: Option<Version>,
-
         /// Which modloader to build upon.
         #[arg(short, long)]
         loader: Option<Loader>,
-
         /// Which loader version to use. Ignored if no loader is used.
         #[arg(long)]
         loader_version: Option<Version>,
-
         /// Don't ask for confirmation if there's already a pack in the current
         /// directory.
         #[arg(short, long)]
@@ -97,18 +93,29 @@ pub enum PackAction {
 #[derive(clap::Subcommand, Debug)]
 pub enum ComponentAction {
     /// Show the existing components in the pack.
-    List,
+    List {
+        /// Hide non-clientside components.
+        #[arg(long("client"))]
+        clientside: bool,
+        /// Hide non-serverside components.
+        #[arg(long("server"))]
+        serverside: bool,
+        /// Show only local components.
+        #[arg(long("local"))]
+        local_source: bool,
+        /// Show only remote components.
+        #[arg(long("remote"))]
+        remote_source: bool,
+    },
 
     /// Add a new component to the pack.
     #[command(arg_required_else_help = true)]
     Add {
         /// The IDs of components to be added.
         ids: Vec<String>,
-
         /// Whether to tread `ids` as paths to local files.
         #[arg(short, long)]
         local: bool,
-
         /// Force all listed components to be added to this category.
         #[arg(short('c'), long("category"))]
         forced_category: Option<Category>,

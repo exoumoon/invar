@@ -16,8 +16,8 @@ use color_eyre::{Section, eyre};
 use eyre::{Context, ContextCompat};
 use inquire::validator::{StringValidator, Validation};
 use invar_component::{
-    Category, Component, Env, Id, LocalComponent, RemoteComponent, RuntimeDirectory, Source,
-    TagInformation,
+    Category, Component, Env, Id, LocalComponent, RemoteComponent, Requirement, RuntimeDirectory,
+    Source, TagInformation,
 };
 use invar_pack::Pack;
 use invar_pack::instance::version::MinecraftVersion;
@@ -92,9 +92,26 @@ fn run(options: Options) -> Result<(), Report> {
         },
 
         Subcommand::Component { action } => match action {
-            ComponentAction::List => {
+            ComponentAction::List {
+                clientside,
+                serverside,
+                local_source,
+                remote_source,
+            } => {
                 let local_repository = LocalRepository::open_at_git_root()?;
-                let components = local_repository.components()?;
+                let components = local_repository
+                    .components()?
+                    .into_iter()
+                    .filter(|component| {
+                        let matches_env_filter = (!clientside
+                            || component.environment.client != Requirement::Unsupported)
+                            && (!serverside
+                                || component.environment.server != Requirement::Unsupported);
+                        let matches_source_filter = (!local_source || component.source.is_local())
+                            && (!remote_source || component.source.is_remote());
+                        matches_env_filter && matches_source_filter
+                    })
+                    .collect::<Vec<_>>();
                 for component @ Component {
                     id,
                     category,
