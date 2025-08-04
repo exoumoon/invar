@@ -172,19 +172,24 @@ fn run(options: Options) -> Result<(), Report> {
                 for id in ids {
                     if local {
                         let path = PathBuf::from(&id).canonicalize()?;
-                        let parent_dir = path
-                            .parent()
-                            .and_then(Path::file_name)
-                            .and_then(OsStr::to_str)
-                            .wrap_err("Failed to figure out the component's parent dir")?
-                            .parse::<RuntimeDirectory>()
-                            .wrap_err("Failed to auto-categorize the component")?;
                         let component = Component {
                             id: Id::from(id),
-                            source: Source::Local(LocalComponent { path }),
+                            source: Source::Local(LocalComponent { path: path.clone() }),
                             environment: Env::client_and_server(),
                             tags: TagInformation::untagged(), // TODO: Figure out tags.
-                            category: forced_category.unwrap_or_else(|| Category::from(parent_dir)),
+                            category: match forced_category {
+                                Some(forced_category) => forced_category,
+                                None => {
+                                    let parent_dir = path
+                                        .parent()
+                                        .and_then(Path::file_name)
+                                        .and_then(OsStr::to_str)
+                                        .wrap_err("Failed to get the component's parent dir")?
+                                        .parse::<RuntimeDirectory>()
+                                        .wrap_err("Failed to auto-categorize the component")?;
+                                    Category::from(parent_dir)
+                                }
+                            },
                         };
                         local_repository.save_component(&component)?;
                     } else {
