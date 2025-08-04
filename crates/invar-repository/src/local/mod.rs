@@ -4,8 +4,7 @@ use std::path::{Path, PathBuf};
 use std::{fs, io};
 
 use invar_component::{
-    Component, Env, LocalComponent, LocalComponentEntry, Requirement, RuntimeDirectory, Source,
-    TagInformation,
+    Component, LocalComponent, LocalComponentEntry, RuntimeDirectory, Source, TagInformation,
 };
 use invar_pack::Pack;
 use invar_pack::settings::VcsMode;
@@ -87,16 +86,21 @@ impl LocalRepository {
             }
         }
 
-        for entry @ LocalComponentEntry { path, category } in &self.pack.local_components {
+        for entry @ LocalComponentEntry {
+            path,
+            category,
+            environment,
+        } in &self.pack.local_components
+        {
             let component = Component {
                 id: entry.id(),
                 category: *category,
                 tags: TagInformation::default(),
-                environment: Env {
-                    client: Requirement::Required,
-                    server: Requirement::Required,
-                },
-                source: Source::Local(LocalComponent { path: path.clone() }),
+                environment: environment.clone(),
+                source: Source::Local(LocalComponent {
+                    path: path.clone(),
+                    source_entry: entry.clone(),
+                }),
             };
 
             components.push(component);
@@ -139,10 +143,7 @@ impl LocalRepository {
     pub fn save_component(&mut self, component: &Component) -> Result<(), self::Error> {
         match component.source {
             Source::Local(ref source) => {
-                self.pack.local_components.push(LocalComponentEntry {
-                    path: source.path.clone(),
-                    category: component.category,
-                });
+                self.pack.local_components.push(source.source_entry.clone());
                 self.pack.write()?;
             }
             Source::Remote(_) => {

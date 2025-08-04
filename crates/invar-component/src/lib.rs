@@ -61,7 +61,6 @@ pub struct Component {
 /// Possible sources where a [`Component`] might come from.
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[must_use]
-#[expect(clippy::large_enum_variant)]
 pub enum Source {
     Remote(RemoteComponent),
     Local(LocalComponent),
@@ -77,7 +76,7 @@ impl Source {
     pub fn file_name(&self) -> PathBuf {
         match self {
             Self::Remote(remote_component) => remote_component.file_name.clone(),
-            Self::Local(local_component) => local_component.path.clone(),
+            Self::Local(local_component) => local_component.source_entry.uncategorized_path(),
         }
     }
 
@@ -128,17 +127,12 @@ pub struct RemoteComponent {
 /// **Local** here can be taken as "this component exists as an already existing
 /// non-metadata file in the modpack's repository, and should be simply copied
 /// as is to the resulting modpack".
-///
-/// To add a file (be it a mod, config file or whatnot), just place that file
-/// into its relevant folder, and run `invar component import-local`. Invar will
-/// recognize all non-metadata files as potential local components, and ask you
-/// if those should be tracked. You can also manually populate the internal list
-/// of local components, it is kept in `pack.yml`.
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[must_use]
 pub struct LocalComponent {
     /// Path to the non-metadata file that should be included as-is.
     pub path: PathBuf,
+    pub source_entry: LocalComponentEntry,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Clone, Debug)]
@@ -146,19 +140,33 @@ pub struct LocalComponent {
 pub struct LocalComponentEntry {
     pub path: PathBuf,
     pub category: Category,
+    #[serde(default)]
+    pub environment: Env,
 }
 
 impl LocalComponentEntry {
+    /// Returns the "uncategorized" path of this [`LocalComponentEntry`].
+    ///
+    /// If the source path is nested like `config/fancymenu/cfg.txt`, its [`Id`]
+    /// will include the entire nested route.
+    // TODO: This may be a fucking gimmick.
+    // Perhaps instead of jumping through all of these loops, we could just NOT categorize local
+    // components in the first place and let their runtime category be decided by their path in the
+    // repository. However, that would require quite a bit of refactoring for not that much benefit,
+    // and I have better things to do.
+    #[must_use]
+    pub fn uncategorized_path(&self) -> PathBuf {
+        let path_component_count = self.path.components().count();
+        self.path
+            .components()
+            .skip(usize::from(path_component_count > 1))
+            .collect::<PathBuf>()
+    }
+
     /// Returns the [`Id`] of this [`LocalComponentEntry`].
-    ///
-    /// # Panics
-    ///
-    /// Panics if the underlying path has no file stem.
     #[must_use]
     pub fn id(&self) -> Id {
-        self.path
-            .file_stem()
-            .unwrap()
+        self.uncategorized_path()
             .to_string_lossy()
             .to_string()
             .into()

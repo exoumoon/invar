@@ -16,8 +16,8 @@ use color_eyre::{Section, eyre};
 use eyre::{Context, ContextCompat};
 use inquire::validator::{StringValidator, Validation};
 use invar_component::{
-    Category, Component, Env, Id, LocalComponent, RemoteComponent, Requirement, RuntimeDirectory,
-    Source, TagInformation,
+    Category, Component, Env, Id, LocalComponent, LocalComponentEntry, RemoteComponent,
+    Requirement, RuntimeDirectory, Source, TagInformation,
 };
 use invar_pack::Pack;
 use invar_pack::instance::version::MinecraftVersion;
@@ -123,11 +123,11 @@ fn run(options: Options) -> Result<(), Report> {
                     .sorted_by_key(|component| (component.category, component.id.as_str()))
                 {
                     match category {
-                        Category::Mod => eprint!("{:>32}", id.purple().bold()),
-                        Category::Resourcepack => eprint!("{:>32}", id.bold().green()),
-                        Category::Shader => eprint!("{:>32}", id.bold().cyan()),
-                        Category::Datapack => eprint!("{:>32}", id.bold().red()),
-                        Category::Config => eprint!("{:>32}", id.bold().yellow()),
+                        Category::Mod => eprint!("{:>48}", id.purple().bold()),
+                        Category::Resourcepack => eprint!("{:>48}", id.bold().green()),
+                        Category::Shader => eprint!("{:>48}", id.bold().cyan()),
+                        Category::Datapack => eprint!("{:>48}", id.bold().red()),
+                        Category::Config => eprint!("{:>48}", id.bold().yellow()),
                     }
 
                     eprint!(
@@ -172,25 +172,37 @@ fn run(options: Options) -> Result<(), Report> {
                 for id in ids {
                     if local {
                         let path = PathBuf::from(&id).normalize_lexically()?;
+                        let category = match forced_category {
+                            Some(forced_category) => forced_category,
+                            None => {
+                                let parent_dir = path
+                                    .parent()
+                                    .and_then(Path::file_name)
+                                    .and_then(OsStr::to_str)
+                                    .wrap_err("Failed to get the component's parent dir")?
+                                    .parse::<RuntimeDirectory>()
+                                    .wrap_err("Failed to auto-categorize the component")?;
+                                Category::from(parent_dir)
+                            }
+                        };
+
+                        let source = Source::Local(LocalComponent {
+                            path: path.clone(),
+                            source_entry: LocalComponentEntry {
+                                path,
+                                category,
+                                environment: Env::client_and_server(),
+                            },
+                        });
+
                         let component = Component {
                             id: Id::from(id),
-                            source: Source::Local(LocalComponent { path: path.clone() }),
+                            source,
                             environment: Env::client_and_server(),
                             tags: TagInformation::untagged(), // TODO: Figure out tags.
-                            category: match forced_category {
-                                Some(forced_category) => forced_category,
-                                None => {
-                                    let parent_dir = path
-                                        .parent()
-                                        .and_then(Path::file_name)
-                                        .and_then(OsStr::to_str)
-                                        .wrap_err("Failed to get the component's parent dir")?
-                                        .parse::<RuntimeDirectory>()
-                                        .wrap_err("Failed to auto-categorize the component")?;
-                                    Category::from(parent_dir)
-                                }
-                            },
+                            category,
                         };
+
                         local_repository.save_component(&component)?;
                     } else {
                         add_component_from_modrinth(

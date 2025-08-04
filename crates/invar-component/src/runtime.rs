@@ -60,15 +60,7 @@ impl Component {
     pub fn runtime_path(&self) -> RuntimePath {
         let directory = RuntimeDirectory::from(self.category);
 
-        // HACK: Holyshit this is dirty, we really need a way to include full
-        // directories or dedicated logic for local and remote components.
-        let source_file_name = self
-            .source
-            .file_name()
-            .components()
-            .skip((self.source.file_name().components().count() > 1).into())
-            .collect::<PathBuf>();
-
+        let source_file_name = self.source.file_name();
         let id_only_name = format!(
             "{id}.{extension}",
             id = self.id,
