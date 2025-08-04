@@ -186,14 +186,12 @@ fn run(options: Options) -> Result<(), Report> {
                             }
                         };
 
-                        let source = Source::Local(LocalComponent {
-                            path: path.clone(),
-                            source_entry: LocalComponentEntry {
-                                path,
-                                category,
-                                environment: Env::client_and_server(),
-                            },
-                        });
+                        let source = Source::Local(LocalComponent::from(LocalComponentEntry {
+                            source_path: path.clone(),
+                            runtime_path: None,
+                            category,
+                            environment: Env::client_and_server(),
+                        }));
 
                         let component = Component {
                             id: Id::from(id),

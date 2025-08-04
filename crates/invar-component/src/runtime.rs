@@ -3,7 +3,7 @@ use std::path::PathBuf;
 
 use strum::{Display, EnumIter, EnumString};
 
-use crate::{Category, Component};
+use crate::{Category, Component, Source};
 
 #[derive(Display, EnumIter, EnumString, Clone, Copy, PartialEq, Eq, Debug)]
 #[strum(serialize_all = "lowercase", ascii_case_insensitive)]
@@ -19,14 +19,21 @@ pub enum RuntimeDirectory {
 #[derive(Debug, Clone)]
 #[must_use]
 pub struct RuntimePath {
-    directory: RuntimeDirectory,
+    directory: Option<RuntimeDirectory>,
     filename: PathBuf,
 }
 
 impl RuntimePath {
     pub const fn new(directory: RuntimeDirectory, filename: PathBuf) -> Self {
         Self {
-            directory,
+            directory: Some(directory),
+            filename,
+        }
+    }
+
+    pub const fn new_root(filename: PathBuf) -> Self {
+        Self {
+            directory: None,
             filename,
         }
     }
@@ -58,24 +65,34 @@ impl From<RuntimeDirectory> for Category {
 
 impl Component {
     pub fn runtime_path(&self) -> RuntimePath {
-        let directory = RuntimeDirectory::from(self.category);
+        match &self.source {
+            Source::Local(local_component)
+                if let Some(runtime_path_override) = &local_component.source_entry.runtime_path =>
+            {
+                RuntimePath::new_root(runtime_path_override.clone())
+            }
 
-        let source_file_name = self.source.file_name();
-        let id_only_name = format!(
-            "{id}.{extension}",
-            id = self.id,
-            extension = source_file_name
-                .extension()
-                .and_then(OsStr::to_str)
-                .unwrap_or("zip"),
-        );
+            _ => {
+                let directory = RuntimeDirectory::from(self.category);
 
-        let filename = match self.category {
-            Category::Mod | Category::Datapack | Category::Config => source_file_name,
-            Category::Resourcepack | Category::Shader => PathBuf::from(id_only_name),
-        };
+                let source_file_name = self.source.file_name();
+                let id_only_name = format!(
+                    "{id}.{extension}",
+                    id = self.id,
+                    extension = source_file_name
+                        .extension()
+                        .and_then(OsStr::to_str)
+                        .unwrap_or("zip"),
+                );
 
-        RuntimePath::new(directory, filename)
+                let filename = match self.category {
+                    Category::Mod | Category::Datapack | Category::Config => source_file_name,
+                    Category::Resourcepack | Category::Shader => PathBuf::from(id_only_name),
+                };
+
+                RuntimePath::new(directory, filename)
+            }
+        }
     }
 }
 
@@ -92,9 +109,13 @@ impl From<RuntimePath> for PathBuf {
             filename,
         } = runtime_path;
 
-        let mut path = Self::from(directory);
-        path.push(filename);
-
-        path
+        match directory {
+            None => filename,
+            Some(directory) => {
+                let mut path = Self::from(directory);
+                path.push(filename);
+                path
+            }
+        }
     }
 }

@@ -1,3 +1,5 @@
+#![feature(if_let_guard)]
+
 //! This crate is a part of **[Invar]**.
 //!
 //! ## What's a component?
@@ -13,7 +15,7 @@
 //! [Invar]: https://github.com/exoumoon/invar
 
 use std::fmt;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use clap::ValueEnum;
 use nutype::nutype;
@@ -130,15 +132,29 @@ pub struct RemoteComponent {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[must_use]
 pub struct LocalComponent {
-    /// Path to the non-metadata file that should be included as-is.
-    pub path: PathBuf,
+    #[serde(flatten)]
     pub source_entry: LocalComponentEntry,
+}
+
+impl LocalComponent {
+    #[must_use]
+    pub fn path(&self) -> &Path {
+        &self.source_entry.source_path
+    }
+}
+
+impl From<LocalComponentEntry> for LocalComponent {
+    fn from(source_entry: LocalComponentEntry) -> Self {
+        Self { source_entry }
+    }
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Clone, Debug)]
 #[must_use]
 pub struct LocalComponentEntry {
-    pub path: PathBuf,
+    #[serde(alias = "path")]
+    pub source_path: PathBuf,
+    pub runtime_path: Option<PathBuf>,
     pub category: Category,
     #[serde(default)]
     pub environment: Env,
@@ -156,8 +172,8 @@ impl LocalComponentEntry {
     // and I have better things to do.
     #[must_use]
     pub fn uncategorized_path(&self) -> PathBuf {
-        let path_component_count = self.path.components().count();
-        self.path
+        let path_component_count = self.source_path.components().count();
+        self.source_path
             .components()
             .skip(usize::from(path_component_count > 1))
             .collect::<PathBuf>()

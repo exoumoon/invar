@@ -87,7 +87,8 @@ impl LocalRepository {
         }
 
         for entry @ LocalComponentEntry {
-            path,
+            source_path: _,
+            runtime_path: _,
             category,
             environment,
         } in &self.pack.local_components
@@ -97,10 +98,7 @@ impl LocalRepository {
                 category: *category,
                 tags: TagInformation::default(),
                 environment: environment.clone(),
-                source: Source::Local(LocalComponent {
-                    path: path.clone(),
-                    source_entry: entry.clone(),
-                }),
+                source: Source::Local(LocalComponent::from(entry.clone())),
             };
 
             components.push(component);
