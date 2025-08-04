@@ -1217,7 +1217,7 @@ dependencies = [
 
 [[package]]
 name = "invar"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "clap",
  "clap_complete",
@@ -1240,7 +1240,7 @@ dependencies = [
 
 [[package]]
 name = "invar-component"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "clap",
  "eyre",
@@ -1254,7 +1254,7 @@ dependencies = [
 
 [[package]]
 name = "invar-pack"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "bon",
  "clap",
@@ -1272,7 +1272,7 @@ dependencies = [
 
 [[package]]
 name = "invar-repository"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "chrono",
  "color-eyre",
@@ -1293,7 +1293,7 @@ dependencies = [
 
 [[package]]
 name = "invar-server"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "bon",
  "docker-compose-types",
