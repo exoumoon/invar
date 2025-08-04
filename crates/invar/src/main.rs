@@ -1,4 +1,4 @@
-#![feature(result_option_map_or_default)]
+#![feature(result_option_map_or_default, normalize_lexically)]
 
 mod cli;
 
@@ -171,7 +171,7 @@ fn run(options: Options) -> Result<(), Report> {
 
                 for id in ids {
                     if local {
-                        let path = PathBuf::from(&id).canonicalize()?;
+                        let path = PathBuf::from(&id).normalize_lexically()?;
                         let component = Component {
                             id: Id::from(id),
                             source: Source::Local(LocalComponent { path: path.clone() }),

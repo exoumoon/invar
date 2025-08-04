@@ -77,7 +77,7 @@ impl Source {
     pub fn file_name(&self) -> PathBuf {
         match self {
             Self::Remote(remote_component) => remote_component.file_name.clone(),
-            Self::Local(local_component) => local_component.path.file_name().unwrap().into(),
+            Self::Local(local_component) => local_component.path.clone(),
         }
     }
 
