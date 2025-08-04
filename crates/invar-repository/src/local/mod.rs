@@ -141,7 +141,7 @@ impl LocalRepository {
     pub fn save_component(&mut self, component: &Component) -> Result<(), self::Error> {
         match component.source {
             Source::Local(ref source) => {
-                self.pack.local_components.push(source.source_entry.clone());
+                self.pack.local_components.push(source.entry.clone());
                 self.pack.write()?;
             }
             Source::Remote(_) => {

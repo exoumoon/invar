@@ -78,7 +78,7 @@ impl Source {
     pub fn file_name(&self) -> PathBuf {
         match self {
             Self::Remote(remote_component) => remote_component.file_name.clone(),
-            Self::Local(local_component) => local_component.source_entry.uncategorized_path(),
+            Self::Local(local_component) => local_component.entry.uncategorized_path(),
         }
     }
 
@@ -133,19 +133,19 @@ pub struct RemoteComponent {
 #[must_use]
 pub struct LocalComponent {
     #[serde(flatten)]
-    pub source_entry: LocalComponentEntry,
+    pub entry: LocalComponentEntry,
 }
 
 impl LocalComponent {
     #[must_use]
     pub fn path(&self) -> &Path {
-        &self.source_entry.source_path
+        &self.entry.source_path
     }
 }
 
 impl From<LocalComponentEntry> for LocalComponent {
-    fn from(source_entry: LocalComponentEntry) -> Self {
-        Self { source_entry }
+    fn from(entry: LocalComponentEntry) -> Self {
+        Self { entry }
     }
 }
 

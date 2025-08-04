@@ -65,33 +65,28 @@ impl From<RuntimeDirectory> for Category {
 
 impl Component {
     pub fn runtime_path(&self) -> RuntimePath {
+        let directory = RuntimeDirectory::from(self.category);
         match &self.source {
-            Source::Local(local_component)
-                if let Some(runtime_path_override) = &local_component.source_entry.runtime_path =>
-            {
-                RuntimePath::new_root(runtime_path_override.clone())
-            }
+            Source::Local(local_component) => match &local_component.entry.runtime_path {
+                Some(runtime_path_override) => RuntimePath::new_root(runtime_path_override.clone()),
+                None => RuntimePath::new(directory, local_component.entry.uncategorized_path()),
+            },
 
-            _ => {
-                let directory = RuntimeDirectory::from(self.category);
+            Source::Remote(remote_component) => match self.category {
+                Category::Mod | Category::Datapack | Category::Config => {
+                    RuntimePath::new(directory, remote_component.file_name.clone())
+                }
 
-                let source_file_name = self.source.file_name();
-                let id_only_name = format!(
-                    "{id}.{extension}",
-                    id = self.id,
-                    extension = source_file_name
+                Category::Resourcepack | Category::Shader => {
+                    let file_extension = remote_component
+                        .file_name
                         .extension()
                         .and_then(OsStr::to_str)
-                        .unwrap_or("zip"),
-                );
-
-                let filename = match self.category {
-                    Category::Mod | Category::Datapack | Category::Config => source_file_name,
-                    Category::Resourcepack | Category::Shader => PathBuf::from(id_only_name),
-                };
-
-                RuntimePath::new(directory, filename)
-            }
+                        .map_or("zip", Into::into);
+                    let filename = format!("{id}.{file_extension}", id = self.id);
+                    RuntimePath::new(directory, PathBuf::from(filename))
+                }
+            },
         }
     }
 }
