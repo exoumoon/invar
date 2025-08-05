@@ -219,8 +219,8 @@ fn run(options: Options) -> Result<(), Report> {
                 let mut local_repository = LocalRepository::open_at_git_root()?;
                 for id in ids {
                     local_repository
-                        .remove_components(id)
-                        .wrap_err("Failed to remove component")?;
+                        .remove_components(&id)
+                        .wrap_err(format!("Failed to remove component {id:?}"))?;
                 }
                 Ok(())
             }
