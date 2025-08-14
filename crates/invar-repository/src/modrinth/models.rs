@@ -84,7 +84,7 @@ pub struct File {
 
 #[derive(Deserialize, Clone, Debug)]
 pub struct Dependency {
-    pub project_id: String,
+    pub project_id: Option<String>,
     pub version_id: Option<String>,
     pub file_name: Option<String>,
     pub dependency_type: Requirement,
@@ -97,11 +97,22 @@ impl std::fmt::Display for Dependency {
         if let Some(display_name) = &self.display_name {
             write!(formatter, "{} ", display_name.purple())?;
         }
-        write!(formatter, "[{id}]", id = self.project_id.underline())?;
+
+        write!(
+            formatter,
+            "[{id}]",
+            id = self
+                .project_id
+                .as_ref()
+                .map_or("Unknown", |project_id| project_id.as_str())
+                .underline()
+        )?;
+
         if let Some(summary) = &self.summary {
             let summary_cutoff = format!("{}...", summary.split_at(summary.len().min(80)).0);
             write!(formatter, " {}", summary_cutoff.bright_black())?;
         }
+
         Ok(())
     }
 }

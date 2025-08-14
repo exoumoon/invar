@@ -394,12 +394,16 @@ where
     if !selected_version.dependencies.is_empty() {
         let spinner = Spinner::new("Resolving dependency names").start();
         selected_version.dependencies.retain_mut(|dependency| {
-            let text = &format!("Resolving project ID: {}", &dependency.project_id.purple());
+            let Some(project_id) = &dependency.project_id else {
+                return false;
+            };
+
+            let text = &format!("Resolving project ID: {}", project_id.purple());
             spinner.text(text).update();
-            match modrinth_repository.fetch_project(&dependency.project_id) {
+            match modrinth_repository.fetch_project(project_id) {
                 Err(_) => false,
                 Ok(project) => {
-                    dependency.project_id = project.slug;
+                    dependency.project_id = Some(project.slug);
                     dependency.display_name = Some(project.name);
                     dependency.summary = project.summary;
                     true
@@ -414,7 +418,7 @@ where
 
     let optional_deps = selected_version
         .optional_dependencies()
-        .sorted_unstable_by_key(|dependency| dependency.project_id.as_str())
+        .sorted_unstable_by_key(|d| d.project_id.as_ref().expect("Must be resolved").as_str())
         .cloned()
         .collect::<Vec<_>>();
     if !optional_deps.is_empty() {
@@ -424,13 +428,13 @@ where
     }
 
     for installed_dependency in pending_dependencies.extract_if(.., |dependency| {
-        installed_components
-            .iter()
-            .any(|component| *component.id == dependency.project_id)
+        installed_components.iter().any(|component| {
+            *component.id == *dependency.project_id.as_ref().expect("Must be resolved")
+        })
     }) {
         eprintln!(
             "- {id} ({type:?}): already installed",
-            id = installed_dependency.project_id.green().bold(),
+            id = installed_dependency.project_id.expect("Must be resolved").green().bold(),
             type = installed_dependency.dependency_type.bold(),
         );
     }
@@ -438,7 +442,7 @@ where
     for pending_dependency in &pending_dependencies {
         eprintln!(
             "- {id} ({type:?}): pending",
-            id = pending_dependency.project_id.red().bold(),
+            id = pending_dependency.project_id.as_ref().expect("Must be resolved").red().bold(),
             type = pending_dependency.dependency_type.bold(),
         );
     }
@@ -481,7 +485,11 @@ where
         add_component_from_modrinth::<&str>(
             local_repository,
             modrinth_repository,
-            pending_dependency.project_id.as_str(),
+            pending_dependency
+                .project_id
+                .as_ref()
+                .expect("Must be resolved")
+                .as_str(),
             forced_category,
         )?;
     }
