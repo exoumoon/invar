@@ -40,6 +40,11 @@ or_fun_call = { level = "allow", priority = 1 }
 match_bool = { level = "allow", priority = 1 }
 
 [workspace.dependencies]
+invar-component = { path = "crates/invar-component" }
+invar-pack = { path = "crates/invar-pack" }
+invar-repository = { path = "crates/invar-repository" }
+invar-server = { path = "crates/invar-server" }
+
 bon = "3.6.0"
 chrono = { version = "0.4.41", features = ["now", "serde"] }
 clap = { version = "4.5.17", features = ["derive", "color"] }

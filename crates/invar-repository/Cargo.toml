@@ -11,8 +11,8 @@ license-file.workspace = true
 chrono.workspace = true
 color-eyre.workspace = true
 git2.workspace = true
-invar-component = { path = "../invar-component" }
-invar-pack = { path = "../invar-pack" }
+invar-component.workspace = true
+invar-pack.workspace = true
 reqwest.workspace = true
 semver.workspace = true
 serde.workspace = true

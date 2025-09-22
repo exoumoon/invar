@@ -12,8 +12,8 @@ bon.workspace = true
 docker-compose-types.workspace = true
 git2.workspace = true
 indoc.workspace = true
-invar-pack = { path = "../invar-pack" }
-invar-repository = { path = "../invar-repository" }
+invar-pack.workspace = true
+invar-repository.workspace = true
 serde.workspace = true
 strum.workspace = true
 thiserror.workspace = true

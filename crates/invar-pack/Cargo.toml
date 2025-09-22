@@ -10,7 +10,7 @@ license-file.workspace = true
 [dependencies]
 bon.workspace = true
 clap.workspace = true
-invar-component = { path = "../invar-component" }
+invar-component.workspace = true
 semver.workspace = true
 serde.workspace = true
 serde_json.workspace = true
