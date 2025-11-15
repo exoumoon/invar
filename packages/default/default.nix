@@ -12,4 +12,9 @@ let
     };
 in
 
-naersk'.buildPackage { src = ../..; }
+naersk'.buildPackage {
+    pname = "invar";
+    src = ../..;
+    nativeBuildInputs = with pkgs; [ autoPatchelfHook ];
+    buildInputs = with pkgs; [ openssl.dev libgcc.lib ];
+}
