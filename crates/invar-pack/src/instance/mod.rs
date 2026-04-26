@@ -1,8 +1,9 @@
 use std::collections::{HashMap, HashSet};
 
-use semver::Version;
 use serde::{Deserialize, Serialize};
 use version::MinecraftVersion;
+
+use crate::instance::version::LoaderVersion;
 
 /// Some domain-specific types representing Minecraft's version formats.
 pub mod version;
@@ -20,7 +21,7 @@ pub mod version;
 pub struct Instance {
     pub minecraft_version: MinecraftVersion,
     pub loader: Loader,
-    pub loader_version: Version,
+    pub loader_version: LoaderVersion,
 
     /// Mods with an incompatible loader will be allowed in the pack if this
     /// list contains their loader.
@@ -42,7 +43,7 @@ impl Instance {
     pub fn new(
         minecraft_version: MinecraftVersion,
         loader: Loader,
-        loader_version: Version,
+        loader_version: LoaderVersion,
     ) -> Self {
         let mut allowed_foreign_loaders = HashSet::new();
         if loader != Loader::Minecraft {

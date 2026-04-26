@@ -4,6 +4,51 @@ use std::str::FromStr;
 pub use semver;
 use serde::{Deserialize, Serialize};
 
+/// A loader version, be it semantic one or something else.
+#[derive(Serialize, Deserialize, Clone, PartialEq, Eq, Hash, Debug)]
+#[serde(untagged)]
+#[must_use]
+pub enum LoaderVersion {
+    /// A regular loader semantic version, like `21.1.129`.
+    Semantic(semver::Version),
+    /// Some other loader version I have not prepared this thing for.
+    Weird(String),
+}
+
+impl fmt::Display for LoaderVersion {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let string_repr = match self {
+            Self::Semantic(semver) => semver.to_string(),
+            Self::Weird(string_ref) => string_ref.clone(),
+        };
+
+        write!(f, "{string_repr}")?;
+
+        Ok(())
+    }
+}
+
+impl<S> From<S> for LoaderVersion
+where
+    S: AsRef<str>,
+{
+    fn from(value: S) -> Self {
+        let str = value.as_ref();
+        match semver::Version::from_str(str) {
+            Ok(version) => Self::Semantic(version),
+            Err(_) => Self::Weird(str.to_string()),
+        }
+    }
+}
+
+impl FromStr for LoaderVersion {
+    type Err = !;
+
+    fn from_str(str: &str) -> Result<Self, Self::Err> {
+        Ok(Self::from(str))
+    }
+}
+
 /// A [version of Minecraft], be it semantic one, a [`Snapshot`] or whatever.
 ///
 /// # Note on possible edge cases
@@ -59,7 +104,7 @@ impl fmt::Display for MinecraftVersion {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let string_repr = match self {
             Self::Snapshot(snapshot) => snapshot.to_string(),
-            Self::Unknown(string_ref) => string_ref.to_string(),
+            Self::Unknown(string_ref) => string_ref.clone(),
             Self::Semantic(version) => {
                 let string_repr = version.to_string();
                 match version.patch {

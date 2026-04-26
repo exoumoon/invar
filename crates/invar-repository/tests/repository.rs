@@ -1,6 +1,6 @@
 use color_eyre::eyre::Report;
 use invar_pack::Pack;
-use invar_pack::instance::version::MinecraftVersion;
+use invar_pack::instance::version::{LoaderVersion, MinecraftVersion};
 use invar_pack::instance::{Instance, Loader};
 use invar_pack::settings::Settings;
 use invar_repository::persist::PersistedEntity;
@@ -27,7 +27,7 @@ fn inputs() -> Inputs {
         let instance = Instance::new(
             MinecraftVersion::from("1.20.1"),
             Loader::Forge,
-            Version::parse("47.3.22")?,
+            LoaderVersion::Semantic(Version::parse("47.3.22")?),
         );
 
         let pack = Pack {

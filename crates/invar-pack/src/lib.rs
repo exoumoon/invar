@@ -1,4 +1,5 @@
 #![allow(clippy::missing_errors_doc)]
+#![feature(never_type)]
 
 use std::fs::File;
 use std::io::Write;

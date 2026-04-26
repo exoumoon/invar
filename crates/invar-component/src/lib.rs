@@ -1,5 +1,3 @@
-#![feature(if_let_guard)]
-
 //! This crate is a part of **[Invar]**.
 //!
 //! ## What's a component?

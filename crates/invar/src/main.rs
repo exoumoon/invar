@@ -1,4 +1,4 @@
-#![feature(result_option_map_or_default, normalize_lexically)]
+#![feature(normalize_lexically)]
 
 mod cli;
 
@@ -20,7 +20,7 @@ use invar_component::{
     Requirement, RuntimeDirectory, Source, TagInformation,
 };
 use invar_pack::Pack;
-use invar_pack::instance::version::MinecraftVersion;
+use invar_pack::instance::version::{LoaderVersion, MinecraftVersion};
 use invar_pack::instance::{Instance, Loader};
 use invar_pack::settings::Settings;
 use invar_repository::models::Environment;
@@ -299,16 +299,19 @@ fn setup_pack(
             .prompt()
             .unwrap()
     });
-    let loader_version = match loader {
-        Loader::Minecraft => minecraft_version.clone(),
-        _ => loader_version.unwrap_or_else(|| {
-            inquire::CustomType::new("Modloader version:")
-                .with_placeholder("X.X.X")
-                .with_help_message(VERSION_WARNING)
-                .with_error_message("That's not a valid semantic version.")
-                .prompt()
-                .unwrap()
-        }),
+    let loader_version: LoaderVersion = match loader {
+        Loader::Minecraft => LoaderVersion::Semantic(minecraft_version.clone()),
+        _ => loader_version.map_or_else(
+            || {
+                inquire::CustomType::new("Modloader version:")
+                    .with_placeholder("X.X.X")
+                    .with_help_message(VERSION_WARNING)
+                    .with_error_message("That's not a valid semantic version.")
+                    .prompt()
+                    .unwrap()
+            },
+            LoaderVersion::Semantic,
+        ),
     };
     let mut allowed_foreign_loaders = HashSet::from_iter([Loader::Minecraft]);
     if loader == Loader::Forge || loader == Loader::Neoforge {
