@@ -5,14 +5,14 @@ use std::fs::File;
 use std::io::Write;
 use std::path::PathBuf;
 
-use invar_component::{Component, LocalComponentEntry, Source};
+use invar_component::{Component, LocalComponentEntry, Requirement, Source};
 use semver::Version;
 use serde::{Deserialize, Serialize};
 use settings::Settings;
 use zip::ZipWriter;
 use zip::write::SimpleFileOptions;
 
-use crate::index::overrides::COMMON_OVERRIDES_DIR;
+use crate::index::overrides::{CLIENT_OVERRIDES_DIR, COMMON_OVERRIDES_DIR, SERVER_OVERRIDES_DIR};
 use crate::instance::Instance;
 
 pub mod index;
@@ -71,7 +71,13 @@ impl Pack {
                 let local_file_contents = std::fs::read(local_component.path())?;
                 let runtime_path = PathBuf::from(component.runtime_path());
                 let runtime_path = runtime_path.to_string_lossy();
-                mrpack.start_file(format!("{COMMON_OVERRIDES_DIR}/{runtime_path}"), options)?;
+                let override_dir =
+                    match (component.environment.client, component.environment.server) {
+                        (Requirement::Unsupported, _) => SERVER_OVERRIDES_DIR,
+                        (_, Requirement::Unsupported) => CLIENT_OVERRIDES_DIR,
+                        _ => COMMON_OVERRIDES_DIR,
+                    };
+                mrpack.start_file(format!("{override_dir}/{runtime_path}"), options)?;
                 mrpack.write_all(&local_file_contents)?;
             }
         }
